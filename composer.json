@@ -12,6 +12,7 @@
         "doctrine/dbal": "^3.10",
         "eightynine/filament-excel-import": "^3.1",
         "filament/filament": "^3.3",
+        "guava/filament-modal-relation-managers": "^1.4",
         "guzzlehttp/guzzle": "^7.2",
         "hasnayeen/themes": "^3.0",
         "laravel/framework": "^10.10",

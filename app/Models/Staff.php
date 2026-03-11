@@ -16,7 +16,6 @@ class Staff extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'staff_id');
-        // pastikan foreign key di tabel tasks adalah staff_id
     }
 
     public function role(): BelongsTo
