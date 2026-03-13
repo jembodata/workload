@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('issue_name');
             $table->text('description')->nullable();
             $table->date('due_date')->nullable();
-            $table->string('priority')->default('none');
-            $table->string('status')->default('open');
+            $table->string('priority');
+            $table->string('status');
             $table->timestamps();
         });
     }

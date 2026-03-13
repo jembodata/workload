@@ -132,60 +132,14 @@ class IssuesRelationManager extends RelationManager
                         Forms\Components\Select::make('status')
                             ->label('Status')
                             ->native(false)
-                            ->allowHtml()
-                            ->default('Open')
+                            ->default('Opened')
                             ->selectablePlaceholder(false)
-                            ->options(function () {
-                                $statuses = [
-                                    'Backlog' => [
-                                        'label' => 'Backlog',
-                                        'icon' => 'circle-dashed',
-                                        'color' => '#9ca3af', // Gray
-                                        'rating' => '1'
-                                    ],
-                                    'Open' => [
-                                        'label' => 'Open',
-                                        'icon' => 'circle',
-                                        'color' => '#ffffff', // White/Border
-                                        'rating' => '2'
-                                    ],
-                                    'In Progress' => [
-                                        'label' => 'In Progress',
-                                        'icon' => 'circle-dot-dashed',
-                                        'color' => '#facc15', // Yellow
-                                        'rating' => '3'
-                                    ],
-                                    'Done' => [
-                                        'label' => 'Done',
-                                        'icon' => 'check-circle-2',
-                                        'color' => '#5e6ad2', // Linear Purple-Blue
-                                        'rating' => '4'
-                                    ],
-                                    'Canceled' => [
-                                        'label' => 'Canceled',
-                                        'icon' => 'x-circle',
-                                        'color' => '#9ca3af', // Gray
-                                        'rating' => '5'
-                                    ],
-                                ];
-
-                                $options = [];
-                                foreach ($statuses as $key => $data) {
-
-                                    $options[$key] = "
-                                    <div style='display:flex; align-items:center; width:100%; min-width:100px;'>
-                                        <div style='display:flex; align-items:center; gap:10px;'>
-                                            <img src='https://unpkg.com/lucide-static@latest/icons/{$data['icon']}.svg' 
-                                                style='width:1.1rem; height:1.1rem; filter: invert(30%) sepia(100%) saturate(500%) hue-rotate(0deg);' 
-                                                alt='icon' />
-                                            <span style='font-size: 0.9rem;'>{$data['label']}</span>
-                                        </div>
-                                        <div style='flex-grow: 1;'></div>
-                                        <span style='opacity:0.4; font-family:monospace; font-size: 0.85rem;'>{$data['rating']}</span>
-                                    </div>";
-                                }
-                                return $options;
-                            }),
+                            ->options([
+                                'progress' => 'Progress',
+                                'closed' => 'Closed',
+                                'overdue' => 'Overdue',
+                                'postponed' => 'Postponed',
+                            ]),
                     ]),
             ]);
     }

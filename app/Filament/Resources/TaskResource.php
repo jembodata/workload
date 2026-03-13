@@ -20,6 +20,7 @@ use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
 use Malzariey\FilamentDaterangepickerFilter\Filters\DateRangeFilter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class TaskResource extends Resource
 {
@@ -55,21 +56,57 @@ class TaskResource extends Resource
             ->striped()
             ->heading('Status')
             ->defaultGroup('project.project_name')
+            // default action saat klik row
+            ->recordAction('edit')
             // ->header(view('tables.legend'))
+
+            // Mematikan aksi default klik baris
+            // ->recordAction(null)
+            // ->recordUrl(null)
 
             ->columns([
 
-                Tables\Columns\TextColumn::make('task_name')
-                    ->label('Item')
-                    ->searchable()
-                    ->wrap(),
+                // Tables\Columns\TextColumn::make('task_name')
+                //     ->label('Item')
+                //     ->searchable()
+                //     ->wrap(),
 
-                Tables\Columns\TextInputColumn::make('output')
-                    ->label('Task')
-                    // ->grow(true)
-                    ->width('300px')
-                    ->tooltip(fn(Model $record): string => "{$record->output}")
-                    ->toggleable(isToggledHiddenByDefault: false),
+                // Tables\Columns\TextInputColumn::make('output')
+                //     ->label('Task')
+                //     // ->grow(true)
+                //     // ->width('300px')
+                //     ->tooltip(fn(Model $record): string => "{$record->output}")
+                //     ->toggleable(isToggledHiddenByDefault: false),
+
+                Tables\Columns\TextColumn::make('task_name')
+                    ->label('Item & Task')
+                    ->weight('bold')
+                    ->width('380px')
+                    ->description(function (Model $record) {
+                        $text = $record->output ?? '-';
+                        return Str::limit($text, 50);
+                    })
+                    ->searchable()
+                    ->wrap()
+                    ->tooltip(fn(Model $record): string => $record->output ?? 'Klik untuk edit')
+
+                    ->extraAttributes(['style' => 'cursor: pointer; transition: all 0.2s;'], true)
+                    ->action(
+                        Tables\Actions\Action::make('editOutput')
+                            ->modalHeading('Edit Task Output')
+                            ->modalWidth('md')
+                            ->form([
+                                Forms\Components\Textarea::make('output')
+                                    ->label('Task Output')
+                                    ->rows(3)
+                                    ->maxLength(255)
+                                    ->default(fn($record) => $record->output)
+                                    ->required(),
+                            ])
+                            ->action(function ($record, array $data) {
+                                $record->update(['output' => $data['output']]);
+                            })
+                    ),
 
                 Tables\Columns\TextColumn::make('staff.name')
                     ->label('PIC')
@@ -86,7 +123,7 @@ class TaskResource extends Resource
                 // Jika bukan long term → tampilkan tanggal & estimasi jam
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Target')
-                    ->date()
+                    ->date('d-m-y')
                     ->sortable()
                     ->hidden(fn($record) => $record?->is_long_term)
                     ->toggleable(isToggledHiddenByDefault: false),
@@ -132,59 +169,121 @@ class TaskResource extends Resource
                         default => $state,
                     }),
 
-                Tables\Columns\SelectColumn::make('progress')
+                Tables\Columns\TextColumn::make('progress')
                     ->label('%')
-                    ->grow(false)
-                    ->width('50px') // Membatasi lebar kolom tabel (td)
-                    ->alignment(\Filament\Support\Enums\Alignment::Center) // Menengahkan isi dan header
-                    ->options(
-                        collect(range(0, 100, 5))
-                            ->mapWithKeys(fn($i) => [$i => $i . '%'])
-                            ->toArray()
-                    )
-                    ->selectablePlaceholder(false)
-                    ->extraAttributes([
-                        // Memaksa lebar komponen select dan mengurangi padding dalamnya
-                        'style' => 'width: 45px; margin: 0 auto; font-size: 0.85rem;',
-                    ])
-                    ->extraCellAttributes([
-                        // Menghilangkan padding horizontal pada cell agar lebih rapat
-                        'class' => 'px-1',
-                    ]),
+                    ->alignment(\Filament\Support\Enums\Alignment::Center)
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state . '%')
+                    ->color(function ($state) {
+                        $value = (int) $state;
+                        return match (true) {
+                            $value === 100 => 'success',
+                            $value >= 40   => 'warning',
+                            default        => 'danger',
+                        };
+                    })
+
+                    ->icon(fn($state) => (int) $state === 100 ? 'heroicon-m-lock-closed' : 'heroicon-m-chevron-down')
+                    ->iconPosition('after')
+                    ->tooltip(fn($state) => (int) $state === 100 ? 'Tugas Selesai (Terkunci)' : 'Klik untuk mengubah % progres')
+                    ->extraAttributes(function ($state) {
+                        if ((int) $state === 100) {
+                            return ['style' => 'cursor: not-allowed; opacity: 0.9;'];
+                        }
+                        return ['style' => 'cursor: pointer; transition: all 0.2s;'];
+                    }, true)
+                    ->action(
+                        Tables\Actions\Action::make('updateProgress')
+                            // matikan total jika progres sudah 100
+                            ->disabled(fn(Model $record) => (int) $record->progress === 100)
+                            ->modalHeading('Update Progres Task')
+                            ->modalWidth('sm')
+                            ->form([
+                                Forms\Components\Select::make('progress')
+                                    ->label('Pilih Persentase')
+                                    ->options(
+                                        collect(range(0, 100, 5))->mapWithKeys(fn($i) => [$i => $i . '%'])->toArray()
+                                    )
+                                    ->default(fn($record) => $record->progress)
+                                    ->native(false)
+                                    ->selectablePlaceholder(false)
+                                    ->required(),
+                            ])
+                            ->action(function ($record, array $data) {
+                                $record->update(['progress' => $data['progress']]);
+
+                                Notification::make()
+                                    ->title('Sukses')
+                                    ->body("Progres menjadi {$data['progress']}%")
+                                    ->success()
+                                    ->send();
+                            })
+                    ),
 
                 // Tables\Columns\SelectColumn::make('progress')
                 //     ->label('%')
-                //     ->grow(false)
-                //     ->width('10px')
-                //     ->selectablePlaceholder(false)
+                //     ->alignment(\Filament\Support\Enums\Alignment::Center)
                 //     ->options(
                 //         collect(range(0, 100, 5))
                 //             ->mapWithKeys(fn($i) => [$i => $i . '%'])
                 //             ->toArray()
                 //     )
-                //     ->extraAttributes(['class' => 'w-8 text-center'])
-                //     ->toggleable(isToggledHiddenByDefault: false),
+                //     ->selectablePlaceholder(false)
+                //     ->extraHeaderAttributes(['style' => 'width: 120px; min-width: 120px;'])
+                //     ->extraAttributes(['style' => 'width: 120px; min-width: 120px;'])
 
+                //     // 2. Mengatur warna pada INPUT kotak select-nya langsung
+                //     ->extraInputAttributes(function (Model $record) {
+                //         $value = (int) $record->progress;
+
+                //         $color = match (true) {
+                //             $value === 100 => '#16a34a',
+                //             $value >= 40   => '#ca8a04',
+                //             default        => '#dc2626',
+                //         };
+
+                //         return [
+                //             // Tambahkan !important agar warna bawaan Tailwind dari Filament tertimpa
+                //             'style' => "color: {$color} !important; font-weight: 600;",
+                //         ];
+                //     })
+
+                //     // 3. Notifikasi saat diubah
+                //     ->afterStateUpdated(function ($record, $state) {
+                //         Notification::make()
+                //             ->title('Progres Diperbarui')
+                //             ->body("Progres task berhasil diubah menjadi {$state}%")
+                //             ->success()
+                //             ->send();
+                //     }),
 
                 Tables\Columns\TextColumn::make('status')
                     ->label(new HtmlString('Evaluasi <br/> Efektivitas'))
                     ->badge()
-                    ->formatStateUsing(fn($state) => match ($state) {
-                        'opened' => 'Opened',
-                        'progress' => 'Progress',
-                        'closed' => 'Closed',
-                        'overdue' => 'Overdue',
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'opened'    => 'Opened',
+                        'progress'  => 'Progress',
+                        'closed'    => 'Closed',
+                        'overdue'   => 'Overdue',
                         'postponed' => 'Postponed',
-                        default => ucfirst($state),
+                        default     => ucfirst($state),
                     })
-
-                    ->colors([
-                        'primary' => 'opened',
-                        'warning' => 'progress',
-                        'success' => 'closed',
-                        'danger'  => 'overdue',
-                        'cyan'    => 'postponed', // status "postponed" pakai warna biru (#000080)
-                    ]),
+                    ->icon(fn(string $state): string => match ($state) {
+                        'opened'    => 'heroicon-o-play-circle',
+                        'progress'  => 'heroicon-o-arrow-path',
+                        'closed'    => 'heroicon-o-check-circle',
+                        'overdue'   => 'heroicon-o-x-circle',
+                        'postponed' => 'heroicon-o-pause-circle',
+                        default     => 'heroicon-o-information-circle',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'opened'    => 'info',
+                        'progress'  => 'warning',
+                        'closed'    => 'success',
+                        'overdue'   => 'danger',
+                        'postponed' => 'gray',
+                        default     => 'primary',
+                    }),
 
 
                 Tables\Columns\TextColumn::make('total_overdue')
@@ -250,48 +349,102 @@ class TaskResource extends Resource
             ])
 
             ->actions([
+
+                Tables\Actions\ActionGroup::make([
+
+                    RelationManagerAction::make('issues-relation-manager')
+                        ->label('View Issues')
+                        ->icon('heroicon-m-document-magnifying-glass')
+                        ->color('info') // Memberikan warna biru (info) pada icon
+                        ->slideOver()
+                        ->closeModalByClickingAway(false)
+                        ->relationManager(IssuesRelationManager::make()),
+
+                    Tables\Actions\EditAction::make()
+                        ->color('warning') // Memberikan warna kuning/oranye (warning)
+                        ->slideOver()
+                        ->closeModalByClickingAway(false)
+                        ->modalWidth(MaxWidth::Medium),
+
+                    Tables\Actions\ViewAction::make()
+                        ->color('gray') // Memberikan warna abu-abu (gray)
+                        ->slideOver()
+                        ->closeModalByClickingAway(false)
+                        ->modalWidth(MaxWidth::Medium),
+
+                    Tables\Actions\ReplicateAction::make()
+                        ->color('primary') // Memberikan warna utama tema (primary)
+                        ->form(fn(Form $form) => static::form($form)->columns(2))
+                        ->slideOver()
+                        ->modalWidth(MaxWidth::Medium),
+
+                    Tables\Actions\Action::make('closed')
+                        ->label('Mark as Closed')
+                        ->icon('heroicon-o-check')
+                        ->color('success') // Memberikan warna hijau (success)
+                        ->visible(fn($record) => $record->status !== 'closed')
+                        ->action(function ($record) {
+                            $record->update([
+                                'status' => 'closed',
+                            ]);
+
+                            Notification::make()
+                                ->title('Task berhasil diupdate')
+                                ->success()
+                                ->send();
+                        }),
+
+                ])
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->color('primary')
+                    ->tooltip('Pilihan Aksi'),
                 // Tables\Actions\EditAction::make()
                 //     ->slideOver()
                 //     ->modalWidth(MaxWidth::Medium),
 
-                RelationManagerAction::make('issues-relation-manager')
-                    ->label('View issues')
-                    ->slideOver()
-                    ->closeModalByClickingAway(false)
-                    ->icon('heroicon-m-document-magnifying-glass')
-                    ->relationManager(IssuesRelationManager::make()),
+                // RelationManagerAction::make('issues-relation-manager')
+                //     // ->label('View issues')
+                //     ->label('')
+                //     ->slideOver()
+                //     ->closeModalByClickingAway(false)
+                //     ->icon('heroicon-m-document-magnifying-glass')
+                //     ->relationManager(IssuesRelationManager::make()),
 
-                Tables\Actions\EditAction::make()
-                    ->slideOver()
-                    ->closeModalByClickingAway(false)
-                    ->modalWidth(MaxWidth::Medium),
+                // Tables\Actions\EditAction::make()
+                //     ->label('')
+                //     ->slideOver()
+                //     ->closeModalByClickingAway(false)
+                //     ->modalWidth(MaxWidth::Medium),
 
-                Tables\Actions\ViewAction::make()
-                    ->slideOver()
-                    ->closeModalByClickingAway(false)
-                    ->modalWidth(MaxWidth::Medium),
+                // Tables\Actions\ViewAction::make()
+                //     ->label('')
+                //     ->slideOver()
+                //     ->closeModalByClickingAway(false)
+                //     ->modalWidth(MaxWidth::Medium),
 
-                Tables\Actions\ReplicateAction::make()
-                    ->form(fn(Form $form) => static::form($form)->columns(2))
-                    ->slideOver()
-                    ->modalWidth(MaxWidth::Medium),
+                // Tables\Actions\ReplicateAction::make()
+                //     ->label('')
+                //     ->form(fn(Form $form) => static::form($form)->columns(2))
+                //     ->slideOver()
+                //     ->modalWidth(MaxWidth::Medium),
 
-                Tables\Actions\Action::make('closed')
-                    ->label('Closed')
-                    ->color('success')
-                    ->icon('heroicon-o-check')
-                    // ->requiresConfirmation()
-                    ->visible(fn($record) => $record->status !== 'closed')
-                    ->action(function ($record) {
-                        $record->update([
-                            'status' => 'closed',
-                        ]);
+                // Tables\Actions\Action::make('closed')
+                //     // ->label('Closed')
+                //     ->label('')
+                //     ->color('success')
+                //     ->icon('heroicon-o-check')
+                //     // ->requiresConfirmation()
+                //     ->visible(fn($record) => $record->status !== 'closed')
+                //     ->action(function ($record) {
+                //         $record->update([
+                //             'status' => 'closed',
+                //         ]);
 
-                        Notification::make()
-                            ->title('Task berhasil diupdate')
-                            ->success()
-                            ->send();
-                    }),
+                //         Notification::make()
+                //             ->title('Task berhasil diupdate')
+                //             ->success()
+                //             ->send();
+                //     }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -498,6 +651,7 @@ class TaskResource extends Resource
 
                     // Jika bukan long term → tampilkan tanggal & estimasi jam
                     Forms\Components\DatePicker::make('tanggal')
+                        ->minDate(now()->today())
                         ->label(function (Get $get) {
                             return match ($get('is_long_term')) {
                                 true => 'Start Date Project',

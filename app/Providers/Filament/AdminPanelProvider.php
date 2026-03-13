@@ -9,6 +9,7 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
+use Filament\Support\Assets\Css;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Hasnayeen\Themes\ThemesPlugin;
@@ -25,6 +26,7 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
+            ->breadcrumbs(false)
             ->default()
             ->id('admin')
             ->path('admin')
@@ -47,13 +49,16 @@ class AdminPanelProvider extends PanelProvider
             ->topNavigation()
             ->plugin(
                 ThemesPlugin::make()
-                    ->registerTheme(
-                        [
-                            \Hasnayeen\Themes\Themes\Sunset::class,
-                        ],
-                        override: true,
-                    )
+                ->registerTheme(
+                    [
+                        \Hasnayeen\Themes\Themes\Sunset::class,
+                    ],
+                    override: true,
+                )
             )
+            ->assets([
+                Css::make('custom-scrollbar-fix', resource_path('css\filament\admin\theme.css')),
+            ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
