@@ -17,7 +17,7 @@ class Issue extends Model
 
     protected $fillable = [
         'task_id',
-        'user_id',
+        'staff_id',
         'issue_name',
         'description',
         'due_date',

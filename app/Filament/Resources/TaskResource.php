@@ -54,6 +54,7 @@ class TaskResource extends Resource
     {
         return $table
             ->striped()
+            ->defaultSort('tanggal', 'desc')
             ->heading('Status')
             ->defaultGroup('project.project_name')
             // default action saat klik row
@@ -373,6 +374,7 @@ class TaskResource extends Resource
                         ->modalWidth(MaxWidth::Medium),
 
                     Tables\Actions\ReplicateAction::make()
+                        ->excludeAttributes(['issues_count'])
                         ->color('primary') // Memberikan warna utama tema (primary)
                         ->form(fn(Form $form) => static::form($form)->columns(2))
                         ->slideOver()
@@ -651,7 +653,7 @@ class TaskResource extends Resource
 
                     // Jika bukan long term → tampilkan tanggal & estimasi jam
                     Forms\Components\DatePicker::make('tanggal')
-                        ->minDate(now()->today())
+                        // ->minDate(now()->today())
                         ->label(function (Get $get) {
                             return match ($get('is_long_term')) {
                                 true => 'Start Date Project',

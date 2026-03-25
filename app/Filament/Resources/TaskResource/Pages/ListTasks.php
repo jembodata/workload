@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\TaskResource\Pages;
 
 use App\Filament\Exports\TasksExporter;
+use App\Filament\Pages\TaskReportBuilder;
 use App\Filament\Resources\TaskResource;
 use App\Imports\ImportTask;
 use Filament\Actions;
@@ -26,6 +27,11 @@ class ListTasks extends ListRecords
                 ->modalWidth(MaxWidth::Medium)
                 ->icon('heroicon-o-plus')
                 ->closeModalByClickingAway(false),
+            Actions\Action::make('createReport')
+                ->label('Create Report')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->url(TaskReportBuilder::getUrl()),
             Actions\ExportAction::make()
                 ->exporter(TasksExporter::class)
                 ->label('Export Tasks')

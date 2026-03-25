@@ -15,7 +15,7 @@ return new class extends Migration {
         DB::table('tasks')->get()->each(function ($task) use ($today) {
             $overdue = 0;
 
-            if (in_array($task->status, ['done', 'postponed'])) {
+            if (in_array($task->status, ['closed', 'done', 'postponed'], true)) {
                 $overdue = 0;
             } elseif (!$task->is_long_term && $task->tanggal) {
                 $target = Carbon::parse($task->tanggal);
