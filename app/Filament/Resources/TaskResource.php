@@ -298,6 +298,17 @@ class TaskResource extends Resource
                     ->label(new HtmlString('Total <br/> Issues'))
                     ->badge()
                     ->color(fn($state) => $state > 0 ? 'warning' : 'gray')
+                    ->tooltip('Klik untuk lihat issues')
+                    ->extraAttributes(['style' => 'cursor: pointer;'], true)
+                    ->action(
+                        RelationManagerAction::make('issues-relation-manager-column')
+                            ->label('View Issues')
+                            ->icon('heroicon-m-document-magnifying-glass')
+                            ->color('info')
+                            ->slideOver()
+                            // ->closeModalByClickingAway(false)
+                            ->relationManager(IssuesRelationManager::make())
+                    )
                     ->sortable(),
             ])
 
@@ -353,13 +364,13 @@ class TaskResource extends Resource
 
                 Tables\Actions\ActionGroup::make([
 
-                    RelationManagerAction::make('issues-relation-manager')
-                        ->label('View Issues')
-                        ->icon('heroicon-m-document-magnifying-glass')
-                        ->color('info') // Memberikan warna biru (info) pada icon
-                        ->slideOver()
-                        ->closeModalByClickingAway(false)
-                        ->relationManager(IssuesRelationManager::make()),
+                    // RelationManagerAction::make('issues-relation-manager')
+                    //     ->label('View Issues')
+                    //     ->icon('heroicon-m-document-magnifying-glass')
+                    //     ->color('info') // Memberikan warna biru (info) pada icon
+                    //     ->slideOver()
+                    //     ->closeModalByClickingAway(false)
+                    //     ->relationManager(IssuesRelationManager::make()),
 
                     Tables\Actions\EditAction::make()
                         ->color('warning') // Memberikan warna kuning/oranye (warning)

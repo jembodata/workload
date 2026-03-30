@@ -2,6 +2,11 @@
     <x-filament-actions::modals />
 
     <style>
+        :root {
+            --a4-preview-width: 680px;
+            --a4-preview-height: 961px;
+        }
+
         #report-builder-layout {
             display: block;
             position: relative;
@@ -18,9 +23,145 @@
             width: 100%;
         }
 
+        #report-right-preview .report-doc {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            line-height: 1.35;
+            color: #000;
+        }
+        #report-right-preview .report-doc .center { text-align: center; }
+        #report-right-preview .report-doc table { border-collapse: collapse; border-spacing: 0; width: 100%; }
+        #report-right-preview .report-doc .document-container {
+            width: 100%;
+            position: relative;
+            min-height: calc(var(--a4-preview-height) - 92px);
+            padding-bottom: 120px;
+        }
+        #report-right-preview .report-doc .header-table { border: 0.75px solid #000; }
+        #report-right-preview .report-doc .details-table,
+        #report-right-preview .report-doc .data-table-section {
+            border-left: 0.75px solid #000;
+            border-right: 0.75px solid #000;
+            border-bottom: 0.75px solid #000;
+            border-top: 0;
+        }
+
+        #report-right-preview .report-doc .header-table td { border: 0.75px solid #000; padding: 0; }
+        #report-right-preview .report-doc .logo-cell {
+            width: 18%;
+            text-align: center;
+            vertical-align: middle;
+            padding: 8px 6px;
+        }
+        #report-right-preview .report-doc .logo-wrap { width: 92px; height: 46px; margin: 0 auto; overflow: hidden; }
+        #report-right-preview .report-doc .logo-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+        #report-right-preview .report-doc .title-cell { text-align: center; vertical-align: middle; }
+        #report-right-preview .report-doc .main-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.1; }
+        #report-right-preview .report-doc .sub-title { margin-top: 2px; font-size: 12px; font-style: italic; font-weight: 700; color: #0054a6; }
+        #report-right-preview .report-doc .info-cell { width: 25%; vertical-align: top; padding: 0; }
+        #report-right-preview .report-doc .info-table td {
+            border: 0.75px solid #000;
+            font-size: 11px;
+            padding: 2px 6px;
+            line-height: 1.2;
+            vertical-align: middle;
+        }
+        #report-right-preview .report-doc .info-table tr:first-child td { border-top: 0; }
+        #report-right-preview .report-doc .info-table tr:last-child td { border-bottom: 0; }
+        #report-right-preview .report-doc .info-table td:first-child { border-left: 0; }
+        #report-right-preview .report-doc .info-table td:last-child { border-right: 0; }
+        #report-right-preview .report-doc .info-table .label { width: 45%; white-space: nowrap; font-weight: 700; }
+
+        #report-right-preview .report-doc .details-table td { border: 0.75px solid #000; padding: 3px 6px; }
+        #report-right-preview .report-doc .details-table tr:first-child td { border-top: 0; }
+        #report-right-preview .report-doc .left-empty-cell { width: 18%; }
+        #report-right-preview .report-doc .detail-label { width: 15%; white-space: nowrap; font-weight: 700; }
+        #report-right-preview .report-doc .detail-value { width: 67%; }
+
+        #report-right-preview .report-doc .data-table-section { table-layout: fixed; }
+        #report-right-preview .report-doc .data-table-section th,
+        #report-right-preview .report-doc .data-table-section td {
+            border: 0.75px solid #000;
+            padding: 4px 5px;
+            vertical-align: top;
+        }
+        #report-right-preview .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
+        #report-right-preview .report-doc .data-table-section th { text-align: center; font-size: 12px; font-weight: 700; }
+        #report-right-preview .report-doc .col-no { width: 4%; }
+        #report-right-preview .report-doc .col-item { width: 10%; }
+        #report-right-preview .report-doc .col-pembahasan { width: 20%; }
+        #report-right-preview .report-doc .col-rencana { width: 36%; }
+        #report-right-preview .report-doc .col-target { width: 10%; }
+        #report-right-preview .report-doc .col-pic { width: 10%; }
+        #report-right-preview .report-doc .col-evaluasi { width: 10%; }
+        #report-right-preview .report-doc .eval-stack {
+            display: block;
+        }
+        #report-right-preview .report-doc .eval-pill {
+            display: block;
+            border: 1px solid #111827;
+            border-radius: 2px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1.3;
+            padding: 2px 3px;
+        }
+        #report-right-preview .report-doc .eval-pill + .eval-pill { margin-top: 4px; }
+        #report-right-preview .report-doc .eval-spacer { height: 20px; }
+        #report-right-preview .report-doc .eval-tbd { background: #e5e7eb; color: #111827; }
+        #report-right-preview .report-doc .eval-progress { background: #fde047; color: #111827; }
+        #report-right-preview .report-doc .eval-open { background: #93c5fd; color: #111827; }
+        #report-right-preview .report-doc .eval-overdue { background: #fca5a5; color: #111827; }
+        #report-right-preview .report-doc .eval-postponed { background: #d1d5db; color: #111827; }
+        #report-right-preview .report-doc .eval-closed { background: #86efac; color: #111827; }
+        #report-right-preview .report-doc .empty-message { color: #6b7280; padding: 10px 6px; }
+        #report-right-preview .report-doc .signature-section {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            width: 52%;
+            padding: 0;
+        }
+        #report-right-preview .report-doc .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            border: 0 !important;
+        }
+        #report-right-preview .report-doc .signature-cell {
+            width: 33.333%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 8px;
+            border: 0 !important;
+        }
+        #report-right-preview .report-doc .signature-cell-empty { padding: 0; }
+        #report-right-preview .report-doc .signature-label { font-size: 11px; }
+        #report-right-preview .report-doc .signature-space { height: 36px; }
+        #report-right-preview .report-doc .signature-line { border-top: 1px solid #000; margin: 0 8px 2px; }
+        #report-right-preview .report-doc .signature-name { font-size: 11px; font-weight: 700; }
+        #report-right-preview .report-doc .signature-role { font-size: 10px; color: #222; }
+
+        #report-non-desktop-notice {
+            display: block;
+            margin: 0 0 12px 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #fde68a;
+            background: #fffbeb;
+            color: #92400e;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         @media (min-width: 1280px) {
+            #report-non-desktop-notice {
+                display: none;
+            }
+
             #report-builder-layout {
-                padding-right: calc(min(54vw, 1020px) + 24px);
+                padding-right: calc(min(48vw, 900px) + 24px);
                 margin-top: 0;
             }
 
@@ -35,8 +176,8 @@
                 position: fixed;
                 right: 1rem;
                 top: 5rem;
-                z-index: 20;
-                width: min(54vw, 1020px);
+                z-index: 1;
+                width: min(48vw, 900px);
             }
 
             #report-right-preview-scroll {
@@ -46,9 +187,13 @@
         }
     </style>
 
+    <div id="report-non-desktop-notice">
+        Preview report paling akurat untuk layar desktop (>= 1280px). Di layar kecil, gunakan tombol <strong>Render PDF</strong> untuk hasil final ukuran A4.
+    </div>
+
     <div id="report-builder-layout">
         <aside id="report-left-panel" style="max-width: 760px;">
-            <div class="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div class="space-y-4 border border-gray-200 bg-white p-4 shadow-sm" style="border-radius: 1rem">
                 {{ $this->form }}
 
                 <div class="space-y-2 border-t border-gray-100 pt-3">
@@ -99,8 +244,13 @@
                         @forelse ($availableTasks as $task)
                             <label class="flex cursor-pointer items-start gap-2 rounded-lg bg-white px-2 py-2 hover:bg-gray-50" wire:key="task-picker-{{ $task->id }}">
                                 <input type="checkbox" wire:model.live="selectedTaskIds" value="{{ (string) $task->id }}" class="mt-1 rounded border-gray-300">
-                                <span class="text-xs">
-                                    <span class="font-medium text-gray-900">{{ $task->task_name ?: '-' }}</span>
+                                <span class="min-w-0 flex-1 text-xs">
+                                    <span class="flex items-start justify-between gap-2">
+                                        <span class="truncate font-medium text-gray-900">{{ $task->task_name ?: '-' }}</span>
+                                        <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold {{ ((int) ($task->issues_count ?? 0)) > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600' }}">
+                                            {{ (int) ($task->issues_count ?? 0) }} issue
+                                        </span>
+                                    </span>
                                     <span class="block text-gray-500">{{ $task->staff?->name ?? '-' }} - {{ $task->project?->project_name ?? '-' }}</span>
                                 </span>
                             </label>
@@ -177,9 +327,20 @@
                             @forelse ($availableIssues as $issue)
                                 <label class="flex cursor-pointer items-start gap-2 rounded-lg bg-white px-2 py-2 hover:bg-gray-50" wire:key="issue-picker-{{ $issue->id }}">
                                     <input type="checkbox" wire:model.live="selectedIssueIds" value="{{ (string) $issue->id }}" class="mt-1 rounded border-gray-300">
-                                    <span class="text-xs">
-                                        <span class="font-medium text-gray-900">{{ $issue->issue_name ?: '-' }}</span>
-                                        <span class="block text-gray-500">{{ $issue->task?->task_name ?? '-' }} - {{ $issue->staff?->name ?? '-' }}</span>
+                                    <span class="min-w-0 flex-1 text-xs">
+                                        <span class="flex items-start justify-between gap-2">
+                                            <span class="truncate font-medium text-gray-900">{{ $issue->issue_name ?: '-' }}</span>
+                                            <span class="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                                                Task: {{ $issue->task?->task_name ?? '-' }}
+                                            </span>
+                                        </span>
+                                        <span class="mt-0.5 block text-gray-500">
+                                            PIC: {{ $issue->staff?->name ?? '-' }}
+                                            <span class="mx-1 text-gray-300">|</span>
+                                            Status: {{ ucfirst(str_replace('_', ' ', (string) ($issue->status ?? '-'))) }}
+                                            <span class="mx-1 text-gray-300">|</span>
+                                            Priority: {{ ucfirst(str_replace('_', ' ', (string) ($issue->priority ?? '-'))) }}
+                                        </span>
                                     </span>
                                 </label>
                             @empty
@@ -207,106 +368,27 @@
         </aside>
 
         <section id="report-right-preview" class="min-w-0" style="margin-top: 0;">
-            <div class="mb-2 flex justify-end">
+            <div class="mb-2 flex justify-end gap-2">
+                <x-filament::button
+                    size="sm"
+                    color="gray"
+                    icon="heroicon-o-document-text"
+                    disabled
+                    x-tooltip="{ content: 'Sementara dinonaktifkan' }"
+                >
+                    Render DOCX
+                </x-filament::button>
                 <x-filament::button size="sm" icon="heroicon-o-document-arrow-down" wire:click="mountAction('renderPdf')">
                     Render PDF
                 </x-filament::button>
             </div>
-            <div id="report-right-preview-scroll" class="overflow-auto rounded-2xl border border-gray-200 bg-gray-100 p-4 shadow-inner">
-                <div class="mx-auto w-[210mm] min-h-[297mm] max-w-none bg-white p-[12mm] shadow-sm">
-                    <table class="w-full border-collapse text-[14px] leading-tight">
-                        <tbody>
-                            <tr class="h-[112px]">
-                                <td class="w-[150px] border border-gray-700 p-2 align-middle text-center">
-                                    <div class="mx-auto h-[54px] w-[110px] overflow-hidden">
-                                        <img src="{{ $logoSrc ?? asset('images/logo_report.png') }}" alt="Logo" class="h-11 object-scale-down">
-                                    </div>
-                                </td>
-                                <td class="border border-gray-700 p-2 align-middle">
-                                    <div class="flex h-full min-h-[96px] flex-col items-center justify-center text-center">
-                                        <div class="text-[30px] font-bold tracking-tight leading-tight">{{ $titleId ?: '-' }}</div>
-                                        <div class="mt-1 text-[18px] font-semibold italic text-sky-600 leading-tight">{{ $titleEn ?: '-' }}</div>
-                                    </div>
-                                </td>
-                                <td class="w-[300px] border border-gray-700 p-0 align-top">
-                                    <table class="w-full border-collapse text-[14px] leading-tight">
-                                        <tr>
-                                            <td class="w-[58%] border border-gray-700 px-2 py-1 font-semibold whitespace-nowrap">No. Document</td>
-                                            <td class="border border-gray-700 px-2 py-1">{{ $documentNo ?: '-' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="w-[58%] border border-gray-700 px-2 py-1 font-semibold whitespace-nowrap">Effective date</td>
-                                            <td class="border border-gray-700 px-2 py-1">{{ $effectiveDate ?: '-' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="w-[58%] border border-gray-700 px-2 py-1 font-semibold whitespace-nowrap">Revision</td>
-                                            <td class="border border-gray-700 px-2 py-1">{{ $revision ?: '-' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="w-[58%] border border-gray-700 px-2 py-1 font-semibold whitespace-nowrap">Page</td>
-                                            <td class="border border-gray-700 px-2 py-1 whitespace-nowrap">{{ $pageLabel ?: '-' }}</td>
-                                        </tr>
-                                    </table>
-                                </td>
-                            </tr>
-                            <tr><td class="border border-gray-700 px-2 py-1 text-left font-semibold">Hadir</td><td colspan="2" class="border border-gray-700 px-2 py-1">: {{ $meetingPresent ?: '-' }}</td></tr>
-                            <tr><td class="border border-gray-700 px-2 py-1 text-left font-semibold">Absen</td><td colspan="2" class="border border-gray-700 px-2 py-1">: {{ $meetingAbsent ?: '-' }}</td></tr>
-                            <tr><td class="border border-gray-700 px-2 py-1 text-left font-semibold">Hari</td><td colspan="2" class="border border-gray-700 px-2 py-1">: {{ $meetingDay ?: '-' }}</td></tr>
-                            <tr><td class="border border-gray-700 px-2 py-1 text-left font-semibold">Waktu</td><td colspan="2" class="border border-gray-700 px-2 py-1">: {{ $meetingTime ?: '-' }}</td></tr>
-                            <tr><td class="border border-gray-700 px-2 py-1 text-left font-semibold">Tempat</td><td colspan="2" class="border border-gray-700 px-2 py-1">: {{ $meetingPlace ?: '-' }}</td></tr>
-                        </tbody>
-                    </table>
-
-                    <table class="w-full border-collapse text-[14px] leading-tight">
-                        <colgroup>
-                            <col style="width: 4%">
-                            <col style="width: 12%">
-                            <col style="width: 15%">
-                            <col style="width: 39%">
-                            <col style="width: 10%">
-                            <col style="width: 9%">
-                            <col style="width: 11%">
-                        </colgroup>
-                        <thead>
-                            <tr class="bg-gray-50">
-                                <th class="border border-gray-700 p-1 text-center font-bold">No</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">Item</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">Pembahasan<br>(Input)</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">Rencana Tindakan (Output)</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">Target</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">PIC</th>
-                                <th class="border border-gray-700 p-1 text-center font-bold">Evaluasi<br>Efektivitas</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($previewRows as $row)
-                                @php
-                                    $evaluasiRaw = strtolower((string) ($row['evaluasi'] ?? ''));
-                                    $evaluasiBg = match ($evaluasiRaw) {
-                                        'closed' => 'bg-emerald-300',
-                                        'progress', 'opened', 'open' => 'bg-red-500',
-                                        default => 'bg-amber-300',
-                                    };
-                                    $evaluasiText = $evaluasiRaw === 'closed' ? 'Closed' : ($evaluasiRaw === 'progress' || $evaluasiRaw === 'opened' || $evaluasiRaw === 'open' ? 'Open' : 'TBD');
-                                @endphp
-                                <tr>
-                                    <td class="border border-gray-700 p-1 text-center align-top">{{ $row['no'] }}</td>
-                                    <td class="border border-gray-700 p-1 text-center align-top">{{ $row['item'] }}</td>
-                                    <td class="border border-gray-700 p-1 align-top">{{ $row['input'] }}</td>
-                                    <td class="border border-gray-700 p-1 align-top">{!! nl2br(e($row['output'])) !!}</td>
-                                    <td class="border border-gray-700 p-1 text-center align-top">{{ $row['target'] }}</td>
-                                    <td class="border border-gray-700 p-1 text-center align-top">{{ $row['pic'] }}</td>
-                                    <td class="border border-gray-700 p-1 text-center align-top font-semibold {{ $evaluasiBg }}">{{ $evaluasiText }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="border border-gray-700 p-4 text-center text-gray-500">
-                                        Belum ada task dipilih.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+            <div id="report-right-preview-scroll" class="overflow-auto"
+                style="padding: 14px; border: 1px solid #d9dee7; border-radius: 14px; background: #edf1f6; box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);">
+                <div class="mx-auto overflow-hidden bg-white"
+                    style="width: min(var(--a4-preview-width), 100%); min-height: var(--a4-preview-height); max-width: 100%; padding: 22px; border: 1px solid #dfe5ee; border-radius: 10px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);">
+                    <div class="report-doc">
+                        @include('filament.pages.partials.task-report-document')
+                    </div>
                 </div>
             </div>
         </section>

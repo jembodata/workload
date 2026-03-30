@@ -2,10 +2,12 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\TaskResource;
 use Filament\Widgets\ChartWidget;
 use App\Models\Task;
 use Carbon\Carbon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use Filament\Support\RawJs;
 
 class TaskChart extends ChartWidget
 {
@@ -13,8 +15,8 @@ class TaskChart extends ChartWidget
 
     protected static ?string $heading = 'Status Task';
     protected static ?int $sort = 4;
-    protected int|string|array $columnSpan = 8;
-    protected static ?string $minHeight = '500px';
+    protected int|string|array $columnSpan = 4;
+    protected static ?string $minHeight = '320px';
 
     protected function getData(): array
     {
@@ -76,16 +78,32 @@ class TaskChart extends ChartWidget
         return 'doughnut';
     }
 
-    protected function getOptions(): array
+    protected function getOptions(): RawJs
     {
-        return [
-            'responsive' => true,
-            'plugins' => [
-            ],
-            'scales' => [
-                'x' => ['display' => true],
-                'y' => ['display' => true],
-            ],
-        ];
+        $tasksUrl = TaskResource::getUrl('index');
+
+        return RawJs::make(<<<JS
+            {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: { display: true }
+                },
+                onClick: (event, elements) => {
+                    if (!elements?.length) return;
+
+                    const statusKeys = ['opened', 'progress', 'closed', 'overdue', 'postponed'];
+                    const index = elements[0].index;
+                    const status = statusKeys[index];
+
+                    if (!status) return;
+
+                    const params = new URLSearchParams();
+                    params.set('tableFilters[status][values][0]', status);
+                    window.open('{$tasksUrl}?' + params.toString(), '_blank');
+                }
+            }
+        JS);
     }
 }

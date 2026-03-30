@@ -7,6 +7,9 @@ use App\Filament\Widgets\RoleOverview;
 use App\Filament\Widgets\StatsOverview;
 use App\Filament\Widgets\TaskChart;
 use App\Filament\Widgets\StaffTaskChart;
+use App\Filament\Widgets\WorkloadAlertToday;
+use App\Filament\Widgets\DueThisWeek;
+use App\Filament\Widgets\IssueHeatmapCalendar;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
 use Filament\Forms\Form;
@@ -31,9 +34,12 @@ class Dashboard extends BaseDashboard
     {
         return [
             StatsOverview::class,
+            WorkloadAlertToday::class,
+            DueThisWeek::class,
             PriorityTaskTable::class,
             StaffTaskChart::class,
             TaskChart::class,
+            IssueHeatmapCalendar::class,
             RoleOverview::class,
         ];
     }

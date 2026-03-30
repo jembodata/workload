@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ProjectResource extends Resource
@@ -139,22 +140,51 @@ class ProjectResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return $query
+                    ->withCount('tasks')
+                    ->withCount([
+                        'tasks as tasks_closed_count' => fn(Builder $taskQuery) => $taskQuery->where('status', 'closed'),
+                        'tasks as tasks_overdue_count' => fn(Builder $taskQuery) => $taskQuery->where('status', 'overdue'),
+                        'tasks as tasks_open_issues_count' => fn(Builder $taskQuery) => $taskQuery->whereHas(
+                            'issues',
+                            fn(Builder $issueQuery) => $issueQuery->whereIn('status', ['opened', 'open', 'progress', 'in_progress'])
+                        ),
+                    ]);
+            })
             ->columns([
                 Tables\Columns\TextColumn::make('project_name')
                     ->searchable()
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('health_score')
+                    ->label('Health Score')
+                    ->state(fn(Model $record): int => self::calculateHealthScore($record))
+                    ->badge()
+                    ->color(fn(Model $record): string => self::getHealthScoreColor(self::calculateHealthScore($record)))
+                    ->formatStateUsing(fn(int $state): string => $state . '/100')
+                    ->description(fn(Model $record): string => self::healthScoreBreakdown($record)),
+
+                Tables\Columns\TextColumn::make('health_auto')
+                    ->label('Health Auto')
+                    ->state(fn(Model $record): string => self::getHealthLevelLabel(self::calculateHealthScore($record)))
+                    ->badge()
+                    ->color(fn(Model $record): string => self::getHealthLevelColor(self::calculateHealthScore($record))),
+
                 Tables\Columns\TextColumn::make('health')
+                    ->label('Health Manual')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
                         'on_track' => 'success',
                         'at_risk'  => 'warning',
                         'off_track' => 'danger',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'on_track' => 'On Track',
                         'at_risk'  => 'At Risk',
                         'off_track' => 'Off Track',
+                        default => ucfirst(str_replace('_', ' ', $state)),
                     }),
 
                 Tables\Columns\TextColumn::make('status')
@@ -164,6 +194,7 @@ class ProjectResource extends Resource
                         'active'    => 'info',
                         'on_hold'   => 'warning',
                         'completed' => 'success',
+                        default => 'gray',
                     }),
 
                 Tables\Columns\TextColumn::make('end_date')
@@ -192,6 +223,62 @@ class ProjectResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    private static function calculateHealthScore(Model $record): int
+    {
+        $totalTasks = (int) ($record->tasks_count ?? 0);
+        $overdueTasks = (int) ($record->tasks_overdue_count ?? 0);
+        $tasksWithOpenIssues = (int) ($record->tasks_open_issues_count ?? 0);
+        $closedTasks = (int) ($record->tasks_closed_count ?? 0);
+
+        if ($totalTasks <= 0) {
+            return 100;
+        }
+
+        $overdueRatio = $overdueTasks / $totalTasks;
+        $issueRatio = $tasksWithOpenIssues / $totalTasks;
+        $closedRatio = $closedTasks / $totalTasks;
+
+        $score = 100;
+        $score -= (int) round($overdueRatio * 60); // penalty terbesar
+        $score -= (int) round($issueRatio * 25);   // penalty menengah
+        $score += (int) round($closedRatio * 10);  // bonus progres selesai
+
+        return (int) max(0, min(100, $score));
+    }
+
+    private static function getHealthLevelLabel(int $score): string
+    {
+        return match (true) {
+            $score >= 80 => 'On Track',
+            $score >= 60 => 'At Risk',
+            default => 'Off Track',
+        };
+    }
+
+    private static function getHealthLevelColor(int $score): string
+    {
+        return match (true) {
+            $score >= 80 => 'success',
+            $score >= 60 => 'warning',
+            default => 'danger',
+        };
+    }
+
+    private static function getHealthScoreColor(int $score): string
+    {
+        return self::getHealthLevelColor($score);
+    }
+
+    private static function healthScoreBreakdown(Model $record): string
+    {
+        $totalTasks = (int) ($record->tasks_count ?? 0);
+        $overdueTasks = (int) ($record->tasks_overdue_count ?? 0);
+        $tasksWithOpenIssues = (int) ($record->tasks_open_issues_count ?? 0);
+        $closedTasks = (int) ($record->tasks_closed_count ?? 0);
+
+        return "Tasks: {$totalTasks} | Closed: {$closedTasks} | Overdue: {$overdueTasks} | Open issues: {$tasksWithOpenIssues}";
     }
 
     public static function getRelations(): array

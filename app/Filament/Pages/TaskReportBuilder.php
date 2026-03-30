@@ -4,10 +4,13 @@ namespace App\Filament\Pages;
 
 use App\Models\Issue;
 use App\Models\Project;
+use App\Models\ReportHistory;
 use App\Models\Staff;
 use App\Models\Task;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -17,9 +20,11 @@ use Filament\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
 
 class TaskReportBuilder extends Page implements HasForms
 {
@@ -69,6 +74,7 @@ class TaskReportBuilder extends Page implements HasForms
             'document_no' => '',
             'effective_date' => now()->toDateString(),
             'revision' => '0',
+            'signatures' => [],
         ]);
     }
 
@@ -94,6 +100,28 @@ class TaskReportBuilder extends Page implements HasForms
             });
     }
 
+    public function renderDocxAction(): Action
+    {
+        return Action::make('renderDocx')
+            ->label('Render DOCX')
+            ->icon('heroicon-o-document-text')
+            ->color('gray')
+            ->form([
+                Forms\Components\Select::make('orientation')
+                    ->label('Orientation')
+                    ->options([
+                        'portrait' => 'Portrait',
+                        'landscape' => 'Landscape',
+                    ])
+                    ->default('portrait')
+                    ->native(false)
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $this->renderDocx((string) ($data['orientation'] ?? 'portrait'));
+            });
+    }
+
     public function renderPdf(string $orientation = 'portrait'): void
     {
         $orientation = in_array($orientation, ['portrait', 'landscape'], true) ? $orientation : 'portrait';
@@ -103,11 +131,301 @@ class TaskReportBuilder extends Page implements HasForms
             'orientation' => $orientation,
         ]);
 
-        $token = (string) Str::uuid();
-        Cache::put("task-report-pdf:{$token}", $data, now()->addMinutes(10));
+        $pdfOutput = $this->buildPdfOutput($data, $orientation, $totalPages);
+        $data['pageLabel'] = "1 dari {$totalPages}";
 
-        $url = route('task-report.preview', ['token' => $token]);
+        $now = now();
+        $fileName = 'minutes-meeting-' . $now->format('Ymd-His') . '-' . Str::lower(Str::random(6)) . '.pdf';
+        $pdfPath = 'reports/history/' . $now->format('Y/m') . '/' . $fileName;
+        Storage::disk('local')->put($pdfPath, $pdfOutput);
+
+        $history = ReportHistory::query()->create([
+            'title_id' => (string) ($data['titleId'] ?? ''),
+            'title_en' => (string) ($data['titleEn'] ?? ''),
+            'document_no' => (string) ($data['documentNo'] ?? ''),
+            'revision' => (string) ($data['revision'] ?? ''),
+            'orientation' => $orientation,
+            'page_label' => (string) ($data['pageLabel'] ?? ''),
+            'pdf_path' => $pdfPath,
+            'docx_path' => null,
+            'printed_by' => auth()->id(),
+            'printed_at' => $now,
+            'payload' => [
+                'form_data' => $this->formData,
+                'selected_task_ids' => $this->selectedTaskIds,
+                'selected_issue_ids' => $this->selectedIssueIds,
+                'report_data' => $data,
+            ],
+        ]);
+
+        $url = route('task-report.history.pdf', ['history' => $history]);
         $this->js("window.open('{$url}', '_blank')");
+    }
+
+    public function renderDocx(string $orientation = 'portrait'): void
+    {
+        if (!class_exists(PhpWord::class)) {
+            Notification::make()
+                ->title('DOCX dependency belum terpasang')
+                ->body('Jalankan: composer require phpoffice/phpword:^1.2')
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $orientation = in_array($orientation, ['portrait', 'landscape'], true) ? $orientation : 'portrait';
+        $data = array_merge($this->getReportData(), [
+            'logoSrc' => public_path('images/logo_report.png'),
+            'orientation' => $orientation,
+        ]);
+
+        $docxOutput = $this->buildDocxOutput($data, $orientation);
+
+        $now = now();
+        $fileName = 'minutes-meeting-' . $now->format('Ymd-His') . '-' . Str::lower(Str::random(6)) . '.docx';
+        $docxPath = 'reports/history/' . $now->format('Y/m') . '/' . $fileName;
+        Storage::disk('local')->put($docxPath, $docxOutput);
+
+        $history = ReportHistory::query()->create([
+            'title_id' => (string) ($data['titleId'] ?? ''),
+            'title_en' => (string) ($data['titleEn'] ?? ''),
+            'document_no' => (string) ($data['documentNo'] ?? ''),
+            'revision' => (string) ($data['revision'] ?? ''),
+            'orientation' => $orientation,
+            'page_label' => (string) ($data['pageLabel'] ?? ''),
+            'pdf_path' => null,
+            'docx_path' => $docxPath,
+            'printed_by' => auth()->id(),
+            'printed_at' => $now,
+            'payload' => [
+                'form_data' => $this->formData,
+                'selected_task_ids' => $this->selectedTaskIds,
+                'selected_issue_ids' => $this->selectedIssueIds,
+                'report_data' => $data,
+            ],
+        ]);
+
+        $url = route('task-report.history.docx', ['history' => $history]);
+        $this->js("window.open('{$url}', '_blank')");
+    }
+
+    protected function buildPdfOutput(array $data, string $orientation, ?int &$totalPages = null): string
+    {
+        $probe = Pdf::loadView('filament.pages.task-report-builder-pdf', $data)
+            ->setPaper('a4', $orientation);
+
+        $dompdf = $probe->getDomPDF();
+        $dompdf->render();
+        $totalPages = max(1, (int) $dompdf->getCanvas()->get_page_count());
+
+        $data['pageLabel'] = "1 dari {$totalPages}";
+
+        return Pdf::loadView('filament.pages.task-report-builder-pdf', $data)
+            ->setPaper('a4', $orientation)
+            ->output();
+    }
+
+    protected function buildDocxOutput(array $data, string $orientation): string
+    {
+        $phpWord = new PhpWord();
+        $phpWord->setDefaultFontName('Arial');
+        $phpWord->setDefaultFontSize(10);
+        $isLandscape = $orientation === 'landscape';
+        $totalWidth = $isLandscape ? 14700 : 9800;
+        $wLogo = (int) round($totalWidth * 0.1735);
+        $wMeta = (int) round($totalWidth * 0.2245);
+        $wMetaLabel = (int) floor($wMeta * 0.58);
+        $wMetaValue = $wMeta - $wMetaLabel;
+        $wTitle = $totalWidth - $wLogo - $wMeta;
+
+        $section = $phpWord->addSection([
+            'orientation' => $isLandscape ? 'landscape' : 'portrait',
+            'marginTop' => 680,
+            'marginBottom' => 680,
+            'marginLeft' => 680,
+            'marginRight' => 680,
+        ]);
+
+        $headerTable = $section->addTable([
+            'borderSize' => 6,
+            'borderColor' => '000000',
+            'cellMargin' => 50,
+            'width' => $totalWidth,
+            'unit' => 'dxa',
+        ]);
+
+        $metaRows = [
+            ['No. Document', (string) ($data['documentNo'] ?? '-')],
+            ['Effective date', (string) ($data['effectiveDate'] ?? '-')],
+            ['Revision', (string) ($data['revision'] ?? '-')],
+            ['Page', (string) ($data['pageLabel'] ?? '-')],
+        ];
+
+        foreach ($metaRows as $index => [$label, $value]) {
+            $headerTable->addRow(290);
+
+            if ($index === 0) {
+                $logoCell = $headerTable->addCell($wLogo, ['valign' => 'center', 'vMerge' => 'restart']);
+                $logoPath = (string) ($data['logoSrc'] ?? '');
+                if ($logoPath !== '' && is_file($logoPath)) {
+                    $logoCell->addImage($logoPath, ['width' => 72, 'height' => 36, 'alignment' => 'center']);
+                } else {
+                    $logoCell->addText('LOGO', ['bold' => true], ['alignment' => 'center']);
+                }
+
+                $titleCell = $headerTable->addCell($wTitle, ['valign' => 'center', 'vMerge' => 'restart']);
+                $titleCell->addText((string) ($data['titleId'] ?? '-'), ['bold' => true, 'size' => 12], ['alignment' => 'center', 'spaceAfter' => 30]);
+                $titleCell->addText((string) ($data['titleEn'] ?? '-'), ['bold' => true, 'italic' => true, 'size' => 10, 'color' => '0054A6'], ['alignment' => 'center']);
+            } else {
+                $headerTable->addCell($wLogo, ['vMerge' => 'continue']);
+                $headerTable->addCell($wTitle, ['vMerge' => 'continue']);
+            }
+
+            $headerTable->addCell($wMetaLabel, ['valign' => 'center'])->addText($label, ['bold' => true, 'size' => 9]);
+            $headerTable->addCell($wMetaValue, ['valign' => 'center'])->addText($value, ['size' => 9]);
+        }
+
+        $detailsTable = $section->addTable([
+            'borderSize' => 6,
+            'borderColor' => '000000',
+            'cellMargin' => 40,
+            'width' => $totalWidth,
+            'unit' => 'dxa',
+        ]);
+
+        $detailRows = [
+            ['Hadir', (string) ($data['meetingPresent'] ?? '-')],
+            ['Absen', (string) ($data['meetingAbsent'] ?? '-')],
+            ['Hari', (string) ($data['meetingDay'] ?? '-')],
+            ['Waktu', (string) ($data['meetingTime'] ?? '-')],
+            ['Tempat', (string) ($data['meetingPlace'] ?? '-')],
+        ];
+
+        foreach ($detailRows as [$label, $value]) {
+            $detailsTable->addRow();
+            $detailsTable->addCell($wLogo, ['valign' => 'center'])->addText('');
+            $detailLabelWidth = (int) round($totalWidth * 0.1428);
+            $detailsTable->addCell($detailLabelWidth, ['valign' => 'center'])->addText($label, ['bold' => true]);
+            $detailsTable->addCell($totalWidth - $wLogo - $detailLabelWidth, ['valign' => 'center'])->addText(': ' . $value);
+        }
+
+        $dataTable = $section->addTable([
+            'borderSize' => 6,
+            'borderColor' => '000000',
+            'cellMargin' => 40,
+            'width' => $totalWidth,
+            'unit' => 'dxa',
+        ]);
+
+        $wNo = (int) round($totalWidth * 0.04);
+        $wItem = (int) round($totalWidth * 0.10);
+        $wPembahasan = (int) round($totalWidth * 0.20);
+        $wRencana = (int) round($totalWidth * 0.36);
+        $wTarget = (int) round($totalWidth * 0.10);
+        $wPic = (int) round($totalWidth * 0.10);
+        $wEvaluasi = $totalWidth - $wNo - $wItem - $wPembahasan - $wRencana - $wTarget - $wPic;
+
+        $dataTable->addRow();
+        $dataTable->addCell($wNo)->addText('No', ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wItem)->addText('Item', ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wPembahasan)->addText("Pembahasan\n(Input)", ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wRencana)->addText('Rencana Tindakan (Output)', ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wTarget)->addText('Target', ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wPic)->addText('PIC', ['bold' => true], ['alignment' => 'center']);
+        $dataTable->addCell($wEvaluasi)->addText("Evaluasi\nEfektivitas", ['bold' => true], ['alignment' => 'center']);
+
+        $rows = Arr::wrap($data['previewRows'] ?? []);
+        if (empty($rows)) {
+            $dataTable->addRow();
+            $dataTable->addCell(9780, ['gridSpan' => 7])->addText('Belum ada task dipilih.', ['color' => '6B7280'], ['alignment' => 'center']);
+        } else {
+            foreach ($rows as $row) {
+                $taskStatusKey = $this->normalizeReportStatus((string) ($row['task_status_key'] ?? $row['evaluasi'] ?? ''));
+                $issueStatusKey = $this->normalizeReportStatus((string) ($row['issue_status_key'] ?? 'tbd'));
+                $taskEvaluasiText = (string) ($row['task_evaluasi'] ?? $this->reportStatusLabel($taskStatusKey));
+                $issueEvaluasiText = (string) ($row['issue_evaluasi'] ?? '-');
+                $taskTextColor = match ($taskStatusKey) {
+                    'closed' => '166534',
+                    'progress' => 'A16207',
+                    'opened' => '1D4ED8',
+                    'overdue' => 'B91C1C',
+                    'postponed' => '4B5563',
+                    default => '111827',
+                };
+                $issueTextColor = match ($issueStatusKey) {
+                    'closed' => '166534',
+                    'progress' => 'A16207',
+                    'opened' => '1D4ED8',
+                    'overdue' => 'B91C1C',
+                    'postponed' => '4B5563',
+                    default => '111827',
+                };
+
+                $dataTable->addRow();
+                $dataTable->addCell($wNo)->addText((string) ($row['no'] ?? ''), [], ['alignment' => 'center']);
+                $dataTable->addCell($wItem)->addText($this->docxPlain((string) ($row['item'] ?? '-')), [], ['alignment' => 'center']);
+                $this->addDocxMultilineCell($dataTable->addCell($wPembahasan), (string) ($row['input'] ?? '-'));
+                $this->addDocxMultilineCell($dataTable->addCell($wRencana), (string) ($row['output'] ?? '-'));
+                $dataTable->addCell($wTarget)->addText($this->docxPlain((string) ($row['target'] ?? '-')), [], ['alignment' => 'center']);
+                $dataTable->addCell($wPic)->addText($this->docxPlain((string) ($row['pic'] ?? '-')), [], ['alignment' => 'center']);
+                $evalCell = $dataTable->addCell($wEvaluasi);
+                $evalCell->addText($taskEvaluasiText, ['bold' => true, 'color' => $taskTextColor], ['alignment' => 'center', 'spaceAfter' => 20]);
+                if (trim($issueEvaluasiText) !== '' && trim($issueEvaluasiText) !== '-') {
+                    $evalCell->addTextBreak(1);
+                    $evalCell->addText($issueEvaluasiText, ['size' => 9, 'color' => $issueTextColor], ['alignment' => 'center']);
+                }
+            }
+        }
+
+        $signatures = array_slice(array_values(Arr::wrap($data['signatures'] ?? [])), 0, 3);
+        if (!empty($signatures)) {
+            $section->addTextBreak(1);
+
+            $signatureTable = $section->addTable([
+                'borderSize' => 0,
+                'width' => $totalWidth,
+                'unit' => 'dxa',
+            ]);
+
+            foreach ($signatures as $signature) {
+                $signatureTable->addRow();
+                $signatureTable->addCell((int) round($totalWidth * 0.48), ['borderSize' => 0])->addText('');
+
+                $signCell = $signatureTable->addCell((int) round($totalWidth * 0.52), ['borderSize' => 0]);
+                $signCell->addText('Disetujui,', ['size' => 9], ['alignment' => 'center']);
+                $signCell->addTextBreak(2);
+                $signCell->addText('____________________________', ['size' => 9], ['alignment' => 'center', 'spaceAfter' => 40]);
+                $signCell->addText((string) ($signature['name'] ?? '-'), ['bold' => true, 'size' => 10], ['alignment' => 'center']);
+                $signCell->addText((string) ($signature['company_or_role'] ?? '-'), ['size' => 9], ['alignment' => 'center']);
+            }
+        }
+
+        $tmpPath = tempnam(sys_get_temp_dir(), 'docx_report_');
+        $writer = IOFactory::createWriter($phpWord, 'Word2007');
+        $writer->save($tmpPath);
+
+        $content = (string) file_get_contents($tmpPath);
+        @unlink($tmpPath);
+
+        return $content;
+    }
+
+    protected function addDocxMultilineCell($cell, string $value): void
+    {
+        $lines = preg_split('/\R/u', $this->docxPlain($value)) ?: [''];
+        foreach ($lines as $index => $line) {
+            $cell->addText($line);
+            if ($index < count($lines) - 1) {
+                $cell->addTextBreak();
+            }
+        }
+    }
+
+    protected function docxPlain(string $value): string
+    {
+        $decoded = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $stripped = strip_tags($decoded);
+        return trim((string) preg_replace('/[ \t]+/', ' ', $stripped));
     }
 
     protected function getViewData(): array
@@ -368,6 +686,25 @@ class TaskReportBuilder extends Page implements HasForms
                                     ->label('Revision')
                                     ->live(),
                             ]),
+                        Forms\Components\Repeater::make('signatures')
+                            ->label('Tanda Tangan (Opsional)')
+                            ->schema([
+                                Forms\Components\TextInput::make('name')
+                                    ->label('Nama')
+                                    ->maxLength(120)
+                                    ->live(),
+                                Forms\Components\TextInput::make('company_or_role')
+                                    ->label('Nama Perusahaan / Jabatan')
+                                    ->maxLength(180)
+                                    ->live(),
+                            ])
+                            ->default([])
+                            ->addActionLabel('Tambah Tanda Tangan')
+                            ->maxItems(3)
+                            ->columns(2)
+                            ->collapsible()
+                            ->itemLabel(fn(array $state): ?string => $state['name'] ?? null)
+                            ->live(),
                     ]),
             ])
             ->statePath('formData');
@@ -415,6 +752,7 @@ class TaskReportBuilder extends Page implements HasForms
             'documentNo' => (string) data_get($this->formData, 'document_no', ''),
             'effectiveDate' => $this->formatIndonesianDate(data_get($this->formData, 'effective_date')),
             'revision' => (string) data_get($this->formData, 'revision', ''),
+            'signatures' => $this->formatSignatures(data_get($this->formData, 'signatures', [])),
             'pageLabel' => "1 dari {$totalPages}",
             'logoSrc' => asset('images/logo_report.png'),
         ];
@@ -475,10 +813,34 @@ class TaskReportBuilder extends Page implements HasForms
             ->implode(', ');
     }
 
+    /**
+     * @return array<int, array{name:string,company_or_role:string}>
+     */
+    protected function formatSignatures(mixed $value): array
+    {
+        $items = collect(Arr::wrap($value))
+            ->map(function ($item): array {
+                $name = trim((string) data_get($item, 'name', ''));
+                $companyOrRole = trim((string) data_get($item, 'company_or_role', ''));
+
+                return [
+                    'name' => $name,
+                    'company_or_role' => $companyOrRole,
+                ];
+            })
+            ->filter(fn(array $item) => $item['name'] !== '' || $item['company_or_role'] !== '')
+            ->take(3)
+            ->values()
+            ->all();
+
+        return $items;
+    }
+
     protected function buildTaskPickerQuery(): Builder
     {
         return Task::query()
             ->with(['staff', 'project'])
+            ->withCount('issues')
             ->when($this->showOnlySelectedTasks, fn(Builder $query) => $query->whereIn('id', $this->getSelectedTaskIdsAsInt()))
             ->when($this->taskFilterStaffId, fn(Builder $query) => $query->where('staff_id', $this->taskFilterStaffId))
             ->when($this->taskFilterProjectId, fn(Builder $query) => $query->where('project_id', $this->taskFilterProjectId))
@@ -622,6 +984,7 @@ class TaskReportBuilder extends Page implements HasForms
             ->map(function (Task $task, int $index) use ($issuesByTask) {
                 $output = (string) ($task->output ?? '-');
                 $selectedIssues = $issuesByTask->get($task->id, collect());
+                $taskStatus = $this->normalizeReportStatus((string) ($task->status ?? ''));
 
                 if ($selectedIssues->isNotEmpty()) {
                     $issueText = $selectedIssues->map(function (Issue $issue): string {
@@ -646,6 +1009,9 @@ class TaskReportBuilder extends Page implements HasForms
                     $output = trim($output . "\n\n" . $issueText);
                 }
 
+                $taskEvaluasi = $this->reportStatusLabel($taskStatus);
+                $issueStatusMeta = $this->summarizeIssueStatuses($selectedIssues);
+
                 return [
                     'no' => $index + 1,
                     'item' => (string) ($task->task_name ?? '-'),
@@ -653,10 +1019,86 @@ class TaskReportBuilder extends Page implements HasForms
                     'output' => $output,
                     'target' => $task->tanggal ? $this->formatIndonesianDate($task->tanggal) : '-',
                     'pic' => (string) ($task->staff?->name ?? '-'),
-                    'evaluasi' => ucfirst(str_replace('_', ' ', (string) ($task->status ?? '-'))),
+                    'task_status_key' => $taskStatus,
+                    'task_evaluasi' => $taskEvaluasi,
+                    'issue_status_key' => $issueStatusMeta['primary_key'],
+                    'issue_evaluasi' => $issueStatusMeta['label'],
+                    // Backward compatibility for existing templates/logic.
+                    'evaluasi' => $taskEvaluasi,
                 ];
             })
             ->all();
+    }
+
+    /**
+     * @return array{label:string,primary_key:string}
+     */
+    protected function summarizeIssueStatuses(Collection $selectedIssues): array
+    {
+        if ($selectedIssues->isEmpty()) {
+            return ['label' => '-', 'primary_key' => 'tbd'];
+        }
+
+        $normalizedStatuses = $selectedIssues
+            ->map(fn(Issue $issue) => $this->normalizeReportStatus((string) ($issue->status ?? '')))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($normalizedStatuses->isEmpty()) {
+            return ['label' => '-', 'primary_key' => 'tbd'];
+        }
+
+        $labels = $normalizedStatuses
+            ->map(fn(string $status) => $this->reportStatusLabel($status))
+            ->values();
+
+        return [
+            'label' => $labels->implode(', '),
+            'primary_key' => $this->pickPrimaryStatusKey($normalizedStatuses),
+        ];
+    }
+
+    protected function normalizeReportStatus(string $status): string
+    {
+        $normalized = Str::of($status)
+            ->lower()
+            ->replace('-', '_')
+            ->replace(' ', '_')
+            ->trim()
+            ->toString();
+
+        return match ($normalized) {
+            'opened', 'open', 'todo', 'to_do', 'backlog', 'duplicate' => 'opened',
+            'progress', 'in_progress' => 'progress',
+            'closed', 'close', 'done' => 'closed',
+            'overdue' => 'overdue',
+            'postponed', 'postpone', 'canceled', 'cancelled' => 'postponed',
+            default => $normalized,
+        };
+    }
+
+    protected function reportStatusLabel(string $normalizedStatus): string
+    {
+        return match ($normalizedStatus) {
+            'opened' => 'Open',
+            'progress' => 'Progress',
+            'closed' => 'Closed',
+            'overdue' => 'Overdue',
+            'postponed' => 'Postponed',
+            default => 'TBD',
+        };
+    }
+
+    protected function pickPrimaryStatusKey(Collection $statuses): string
+    {
+        foreach (['overdue', 'progress', 'opened', 'closed', 'postponed'] as $priorityStatus) {
+            if ($statuses->contains($priorityStatus)) {
+                return $priorityStatus;
+            }
+        }
+
+        return (string) ($statuses->first() ?? 'tbd');
     }
 
     /** @return array<int> */

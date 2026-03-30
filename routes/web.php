@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\ReportHistory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,3 +48,31 @@ Route::get('/admin/task-report/preview/{token}', function (string $token) {
         'Content-Disposition' => "inline; filename=\"{$fileName}\"",
     ]);
 })->middleware(['web', 'auth'])->name('task-report.preview');
+
+Route::get('/admin/task-report/history/{history}/pdf', function (ReportHistory $history) {
+    abort_unless((int) auth()->id() === (int) $history->printed_by, 403);
+    abort_if(blank($history->pdf_path), 404);
+    abort_unless(Storage::disk('local')->exists($history->pdf_path), 404);
+
+    $fullPath = Storage::disk('local')->path($history->pdf_path);
+    $fileName = basename($history->pdf_path);
+
+    return response()->file($fullPath, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => "inline; filename=\"{$fileName}\"",
+    ]);
+})->middleware(['web', 'auth'])->name('task-report.history.pdf');
+
+Route::get('/admin/task-report/history/{history}/docx', function (ReportHistory $history) {
+    abort_unless((int) auth()->id() === (int) $history->printed_by, 403);
+    abort_if(blank($history->docx_path), 404);
+    abort_unless(Storage::disk('local')->exists($history->docx_path), 404);
+
+    $fullPath = Storage::disk('local')->path($history->docx_path);
+    $fileName = basename($history->docx_path);
+
+    return response()->file($fullPath, [
+        'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition' => "inline; filename=\"{$fileName}\"",
+    ]);
+})->middleware(['web', 'auth'])->name('task-report.history.docx');

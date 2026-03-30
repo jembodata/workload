@@ -1,5 +1,8 @@
 <x-filament-widgets::widget>
     <x-filament::section>
+        @if ($roles->isEmpty())
+            <div class="text-sm text-gray-500">Belum ada role untuk ditampilkan.</div>
+        @else
         <div x-data="{ tab: 'role-{{ $roles->first()->id }}' }">
             <!-- Tabs Header -->
             <x-filament::tabs label="Roles">
@@ -30,5 +33,6 @@
                 @endforeach
             </x-filament::section>
         </div>
+        @endif
     </x-filament::section>
 </x-filament-widgets::widget>

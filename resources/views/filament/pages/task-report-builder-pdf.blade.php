@@ -5,92 +5,140 @@
     <title>Minutes of Meeting</title>
     <style>
         @page { size: A4 {{ $orientation ?? 'portrait' }}; margin: 12mm; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #111; margin: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        td, th { border: 1px solid #374151; padding: 4px; vertical-align: top; }
-        .center { text-align: center; }
-        .left { text-align: left; }
-        .middle { vertical-align: middle; }
-        .title-id { font-size: 18px; font-weight: 700; line-height: 1.1; }
-        .title-en { font-size: 13px; font-style: italic; font-weight: 700; color: #0369a1; margin-top: 4px; }
-        .meta { font-size: 10px; }
-        .meta-label { width: 62%; white-space: nowrap; font-weight: 700; }
-        .header-row { background: #f8fafc; }
-        .eval-tbd { background: #fcd34d; font-weight: 700; text-align: center; }
-        .eval-open { background: #ef4444; font-weight: 700; text-align: center; }
-        .eval-closed { background: #86efac; font-weight: 700; text-align: center; }
-        .logo-wrap { width: 110px; height: 54px; overflow: hidden; margin: 0 auto; }
-        .logo-wrap img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+        .report-doc {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            line-height: 1.35;
+            color: #000;
+        }
+        .report-doc .center { text-align: center; }
+        .report-doc table { border-collapse: collapse; border-spacing: 0; width: 100%; }
+        .report-doc .document-container { width: 100%; }
+        .report-doc .header-table { border: 0.75px solid #000; }
+        .report-doc .details-table,
+        .report-doc .data-table-section {
+            border-left: 0.75px solid #000;
+            border-right: 0.75px solid #000;
+            border-bottom: 0.75px solid #000;
+            border-top: 0;
+        }
+
+        .report-doc .header-table td { border: 0.75px solid #000; padding: 0; }
+        .report-doc .logo-cell {
+            width: 18%;
+            text-align: center;
+            vertical-align: middle;
+            padding: 7px 5px;
+        }
+        .report-doc .logo-wrap {
+            width: 100%;
+            height: 56px;
+            margin: 0 auto;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .report-doc .logo-wrap img {
+            width: auto;
+            height: auto;
+            max-width: 112px;
+            max-height: 56px;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .report-doc .title-cell { text-align: center; vertical-align: middle; }
+        .report-doc .main-title { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.1; }
+        .report-doc .sub-title { margin-top: 2px; font-size: 10.5px; font-style: italic; font-weight: 700; color: #0054a6; }
+        .report-doc .info-cell { width: 25%; vertical-align: top; padding: 0; }
+        .report-doc .info-table td {
+            border: 0.75px solid #000;
+            font-size: 10px;
+            padding: 2px 5px;
+            line-height: 1.2;
+            vertical-align: middle;
+        }
+        .report-doc .info-table tr:first-child td { border-top: 0; }
+        .report-doc .info-table tr:last-child td { border-bottom: 0; }
+        .report-doc .info-table td:first-child { border-left: 0; }
+        .report-doc .info-table td:last-child { border-right: 0; }
+        .report-doc .info-table .label { width: 45%; white-space: nowrap; font-weight: 700; }
+
+        .report-doc .details-table td { border: 0.75px solid #000; padding: 2px 5px; }
+        .report-doc .details-table tr:first-child td { border-top: 0; }
+        .report-doc .left-empty-cell { width: 18%; }
+        .report-doc .detail-label { width: 15%; white-space: nowrap; font-weight: 700; }
+        .report-doc .detail-value { width: 67%; }
+
+        .report-doc .data-table-section { table-layout: fixed; }
+        .report-doc .data-table-section th,
+        .report-doc .data-table-section td {
+            border: 0.75px solid #000;
+            padding: 4px;
+            vertical-align: top;
+        }
+        .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
+        .report-doc .data-table-section th { text-align: center; font-size: 10px; font-weight: 700; }
+        .report-doc .col-no { width: 4%; }
+        .report-doc .col-item { width: 10%; }
+        .report-doc .col-pembahasan { width: 20%; }
+        .report-doc .col-rencana { width: 36%; }
+        .report-doc .col-target { width: 10%; }
+        .report-doc .col-pic { width: 10%; }
+        .report-doc .col-evaluasi { width: 10%; }
+        .report-doc .eval-stack {
+            display: block;
+        }
+        .report-doc .eval-pill {
+            display: block;
+            border: 0.75px solid #000;
+            border-radius: 2px;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1.25;
+            padding: 2px 3px;
+        }
+        .report-doc .eval-pill + .eval-pill { margin-top: 3px; }
+        .report-doc .eval-spacer { height: 16px; }
+        .report-doc .eval-tbd { background: #e5e7eb; color: #111827; }
+        .report-doc .eval-progress { background: #fde047; color: #111827; }
+        .report-doc .eval-open { background: #93c5fd; color: #111827; }
+        .report-doc .eval-overdue { background: #fca5a5; color: #111827; }
+        .report-doc .eval-postponed { background: #d1d5db; color: #111827; }
+        .report-doc .eval-closed { background: #86efac; color: #111827; }
+        .report-doc .empty-message { color: #6b7280; padding: 9px 5px; }
+        .report-doc .signature-section {
+            position: fixed;
+            right: 12mm;
+            bottom: 12mm;
+            width: 52%;
+            padding: 0;
+            margin: 0;
+        }
+        .report-doc .signature-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            border: 0 !important;
+        }
+        .report-doc .signature-cell {
+            width: 33.333%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 8px;
+            border: 0 !important;
+        }
+        .report-doc .signature-cell-empty { padding: 0; }
+        .report-doc .signature-label { font-size: 10px; }
+        .report-doc .signature-space { height: 34px; }
+        .report-doc .signature-line { border-top: 0.75px solid #000; margin: 0 8px 2px; }
+        .report-doc .signature-name { font-size: 10px; font-weight: 700; }
+        .report-doc .signature-role { font-size: 9.5px; color: #222; }
     </style>
 </head>
 <body>
-    <table style="font-size: 10px;">
-        <tbody>
-            <tr>
-                <td style="width: 120px;" class="center middle">
-                    <div class="logo-wrap">
-                        <img src="{{ $logoSrc }}" alt="Logo">
-                    </div>
-                </td>
-                <td class="center middle">
-                    <div class="title-id">{{ $titleId ?: '-' }}</div>
-                    <div class="title-en">{{ $titleEn ?: '-' }}</div>
-                </td>
-                <td style="width: 205px; padding: 0;">
-                    <table class="meta">
-                        <tr><td class="meta-label">No. Document</td><td>{{ $documentNo ?: '-' }}</td></tr>
-                        <tr><td class="meta-label">Effective date</td><td>{{ $effectiveDate ?: '-' }}</td></tr>
-                        <tr><td class="meta-label">Revision</td><td>{{ $revision ?: '-' }}</td></tr>
-                        <tr><td class="meta-label">Page</td><td style="white-space: nowrap;">{{ $pageLabel ?: '-' }}</td></tr>
-                    </table>
-                </td>
-            </tr>
-            <tr><td class="left"><strong>Hadir</strong></td><td colspan="2">: {{ $meetingPresent ?: '-' }}</td></tr>
-            <tr><td class="left"><strong>Absen</strong></td><td colspan="2">: {{ $meetingAbsent ?: '-' }}</td></tr>
-            <tr><td class="left"><strong>Hari</strong></td><td colspan="2">: {{ $meetingDay ?: '-' }}</td></tr>
-            <tr><td class="left"><strong>Waktu</strong></td><td colspan="2">: {{ $meetingTime ?: '-' }}</td></tr>
-            <tr><td class="left"><strong>Tempat</strong></td><td colspan="2">: {{ $meetingPlace ?: '-' }}</td></tr>
-        </tbody>
-    </table>
-
-    <table style="margin-top: -1px;">
-        <thead>
-            <tr class="header-row">
-                <th style="width:4%;" class="center">No</th>
-                <th style="width:12%;" class="center">Item</th>
-                <th style="width:15%;" class="center">Pembahasan (Input)</th>
-                <th style="width:39%;" class="center">Rencana Tindakan (Output)</th>
-                <th style="width:10%;" class="center">Target</th>
-                <th style="width:9%;" class="center">PIC</th>
-                <th style="width:11%;" class="center">Evaluasi Efektivitas</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($previewRows as $row)
-                @php
-                    $evaluasiRaw = strtolower((string) ($row['evaluasi'] ?? ''));
-                    $evaluasiClass = match ($evaluasiRaw) {
-                        'closed' => 'eval-closed',
-                        'progress', 'opened', 'open' => 'eval-open',
-                        default => 'eval-tbd',
-                    };
-                    $evaluasiText = $evaluasiRaw === 'closed' ? 'Closed' : ($evaluasiRaw === 'progress' || $evaluasiRaw === 'opened' || $evaluasiRaw === 'open' ? 'Open' : 'TBD');
-                @endphp
-                <tr>
-                    <td class="center">{{ $row['no'] }}</td>
-                    <td class="center">{{ $row['item'] }}</td>
-                    <td>{{ $row['input'] }}</td>
-                    <td>{!! nl2br(e($row['output'])) !!}</td>
-                    <td class="center">{{ $row['target'] }}</td>
-                    <td class="center">{{ $row['pic'] }}</td>
-                    <td class="{{ $evaluasiClass }}">{{ $evaluasiText }}</td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="7" class="center" style="color: #6b7280;">Belum ada task dipilih.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
+    <div class="report-doc">
+        @include('filament.pages.partials.task-report-document')
+    </div>
 </body>
 </html>
