@@ -1007,22 +1007,9 @@ class TaskReportBuilder extends Page implements HasForms
 
                 if ($selectedIssues->isNotEmpty()) {
                     $issueText = $selectedIssues->map(function (Issue $issue): string {
-                        $name = trim((string) $issue->issue_name);
-                        $status = trim((string) ($issue->status ?? ''));
-                        $desc = html_entity_decode((string) ($issue->description ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                        $desc = str_replace("\u{00A0}", ' ', $desc);
-                        $desc = trim(strip_tags($desc));
-                        $desc = preg_replace('/\s+/', ' ', $desc) ?? $desc;
+                        $desc = $this->formatIssueDescription($issue);
 
-                        $line = "- {$name}";
-                        if ($status !== '') {
-                            $line .= " ({$status})";
-                        }
-                        if ($desc !== '') {
-                            $line .= ': ' . $desc;
-                        }
-
-                        return $line;
+                        return $desc === '' ? '' : "- {$desc}";
                     })->implode("\n");
 
                     $output = trim($output . "\n\n" . $issueText);
@@ -1071,20 +1058,8 @@ class TaskReportBuilder extends Page implements HasForms
         $statusItems = $selectedIssues
             ->map(function (Issue $issue): array {
                 $key = $this->normalizeReportStatus((string) ($issue->status ?? ''));
-                $name = trim((string) ($issue->issue_name ?? ''));
-                $status = trim((string) ($issue->status ?? ''));
-                $desc = html_entity_decode((string) ($issue->description ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $desc = str_replace("\u{00A0}", ' ', $desc);
-                $desc = trim(strip_tags($desc));
-                $desc = preg_replace('/\s+/', ' ', $desc) ?? $desc;
-
-                $line = "- {$name}";
-                if ($status !== '') {
-                    $line .= " ({$status})";
-                }
-                if ($desc !== '') {
-                    $line .= ': ' . $desc;
-                }
+                $desc = $this->formatIssueDescription($issue);
+                $line = $desc === '' ? '-' : "- {$desc}";
 
                 return [
                     'key' => $key,
@@ -1182,6 +1157,15 @@ class TaskReportBuilder extends Page implements HasForms
         }
 
         return max(1, (int) ceil(mb_strlen($plain) / max(1, $charsPerLine)));
+    }
+
+    protected function formatIssueDescription(Issue $issue): string
+    {
+        $desc = html_entity_decode((string) ($issue->description ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $desc = str_replace("\u{00A0}", ' ', $desc);
+        $desc = trim(strip_tags($desc));
+
+        return (string) (preg_replace('/\s+/', ' ', $desc) ?? $desc);
     }
 
     /** @return array<int> */
