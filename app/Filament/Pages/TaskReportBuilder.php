@@ -1029,7 +1029,10 @@ class TaskReportBuilder extends Page implements HasForms
                 }
 
                 $taskEvaluasi = $this->reportStatusLabel($taskStatus);
-                $issueStatusMeta = $this->summarizeIssueStatuses($selectedIssues);
+                $issueStatusMeta = $this->summarizeIssueStatuses(
+                    $selectedIssues,
+                    (string) ($task->output ?? '-')
+                );
 
                 return [
                     'no' => $index + 1,
@@ -1057,18 +1060,36 @@ class TaskReportBuilder extends Page implements HasForms
      *   items:array<int, array{key:string,label:string}>
      * }
      */
-    protected function summarizeIssueStatuses(Collection $selectedIssues): array
+    protected function summarizeIssueStatuses(Collection $selectedIssues, string $taskOutput = ''): array
     {
         if ($selectedIssues->isEmpty()) {
             return ['label' => '-', 'primary_key' => 'tbd', 'items' => []];
         }
 
+        $taskLineEstimate = $this->estimateWrappedLines($taskOutput, 62);
+
         $statusItems = $selectedIssues
             ->map(function (Issue $issue): array {
                 $key = $this->normalizeReportStatus((string) ($issue->status ?? ''));
+                $name = trim((string) ($issue->issue_name ?? ''));
+                $status = trim((string) ($issue->status ?? ''));
+                $desc = html_entity_decode((string) ($issue->description ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $desc = str_replace("\u{00A0}", ' ', $desc);
+                $desc = trim(strip_tags($desc));
+                $desc = preg_replace('/\s+/', ' ', $desc) ?? $desc;
+
+                $line = "- {$name}";
+                if ($status !== '') {
+                    $line .= " ({$status})";
+                }
+                if ($desc !== '') {
+                    $line .= ': ' . $desc;
+                }
+
                 return [
                     'key' => $key,
                     'label' => $this->reportStatusLabel($key),
+                    'line_estimate' => $this->estimateWrappedLines($line, 62),
                 ];
             })
             ->filter(fn(array $item) => ($item['key'] ?? '') !== '')
@@ -1088,10 +1109,25 @@ class TaskReportBuilder extends Page implements HasForms
             ->pluck('label')
             ->values();
 
+        $itemsWithSpacer = $statusItems
+            ->values()
+            ->map(function (array $item, int $index) use ($statusItems, $taskLineEstimate): array {
+                $spacerLines = $index === 0
+                    ? max(1, $taskLineEstimate + 1)
+                    : max(1, (int) ($statusItems[$index - 1]['line_estimate'] ?? 1));
+
+                return [
+                    'key' => (string) ($item['key'] ?? 'tbd'),
+                    'label' => (string) ($item['label'] ?? 'TBD'),
+                    'spacer' => max(8, min(260, $spacerLines * 15)),
+                ];
+            })
+            ->all();
+
         return [
             'label' => $labels->implode(', '),
             'primary_key' => $this->pickPrimaryStatusKey($normalizedStatuses),
-            'items' => $statusItems->all(),
+            'items' => $itemsWithSpacer,
         ];
     }
 
@@ -1135,6 +1171,17 @@ class TaskReportBuilder extends Page implements HasForms
         }
 
         return (string) ($statuses->first() ?? 'tbd');
+    }
+
+    protected function estimateWrappedLines(string $text, int $charsPerLine = 62): int
+    {
+        $plain = trim((string) preg_replace('/\s+/', ' ', $text));
+
+        if ($plain === '') {
+            return 1;
+        }
+
+        return max(1, (int) ceil(mb_strlen($plain) / max(1, $charsPerLine)));
     }
 
     /** @return array<int> */

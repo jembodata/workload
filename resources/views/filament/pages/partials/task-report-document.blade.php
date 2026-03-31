@@ -98,12 +98,12 @@
                         <div class="eval-stack">
                             <div class="eval-pill {{ $taskEvaluasiClass }}">{{ $taskEvaluasiText }}</div>
                             @if ($hasIssueEvaluasi)
-                                <div class="eval-spacer"></div>
                                 @if ($issueEvaluasiItems->isNotEmpty())
                                     @foreach ($issueEvaluasiItems as $issueItem)
                                         @php
                                             $itemKey = strtolower((string) ($issueItem['key'] ?? 'tbd'));
                                             $itemLabel = (string) ($issueItem['label'] ?? 'TBD');
+                                            $itemSpacer = (int) ($issueItem['spacer'] ?? 12);
                                             $itemClass = match ($itemKey) {
                                                 'closed' => 'eval-closed',
                                                 'progress' => 'eval-progress',
@@ -113,6 +113,7 @@
                                                 default => 'eval-tbd',
                                             };
                                         @endphp
+                                        <div class="eval-spacer" style="height: {{ $itemSpacer }}px;"></div>
                                         <div class="eval-pill {{ $itemClass }}">{{ $itemLabel }}</div>
                                     @endforeach
                                 @else
