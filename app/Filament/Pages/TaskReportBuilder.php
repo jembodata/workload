@@ -344,6 +344,9 @@ class TaskReportBuilder extends Page implements HasForms
                 $issueStatusKey = $this->normalizeReportStatus((string) ($row['issue_status_key'] ?? 'tbd'));
                 $taskEvaluasiText = (string) ($row['task_evaluasi'] ?? $this->reportStatusLabel($taskStatusKey));
                 $issueEvaluasiText = (string) ($row['issue_evaluasi'] ?? '-');
+                $issueEvaluasiItems = collect($row['issue_evaluasi_items'] ?? [])
+                    ->filter(fn($item) => is_array($item))
+                    ->values();
                 $taskTextColor = match ($taskStatusKey) {
                     'closed' => '166534',
                     'progress' => 'A16207',
@@ -370,7 +373,23 @@ class TaskReportBuilder extends Page implements HasForms
                 $dataTable->addCell($wPic)->addText($this->docxPlain((string) ($row['pic'] ?? '-')), [], ['alignment' => 'center']);
                 $evalCell = $dataTable->addCell($wEvaluasi);
                 $evalCell->addText($taskEvaluasiText, ['bold' => true, 'color' => $taskTextColor], ['alignment' => 'center', 'spaceAfter' => 20]);
-                if (trim($issueEvaluasiText) !== '' && trim($issueEvaluasiText) !== '-') {
+                if ($issueEvaluasiItems->isNotEmpty()) {
+                    $evalCell->addTextBreak(1);
+                    foreach ($issueEvaluasiItems as $issueItem) {
+                        $itemKey = $this->normalizeReportStatus((string) ($issueItem['key'] ?? 'tbd'));
+                        $itemLabel = (string) ($issueItem['label'] ?? 'TBD');
+                        $itemColor = match ($itemKey) {
+                            'closed' => '166534',
+                            'progress' => 'A16207',
+                            'opened' => '1D4ED8',
+                            'overdue' => 'B91C1C',
+                            'postponed' => '4B5563',
+                            default => '111827',
+                        };
+
+                        $evalCell->addText($itemLabel, ['size' => 9, 'color' => $itemColor], ['alignment' => 'center', 'spaceAfter' => 10]);
+                    }
+                } elseif (trim($issueEvaluasiText) !== '' && trim($issueEvaluasiText) !== '-') {
                     $evalCell->addTextBreak(1);
                     $evalCell->addText($issueEvaluasiText, ['size' => 9, 'color' => $issueTextColor], ['alignment' => 'center']);
                 }
@@ -1023,6 +1042,7 @@ class TaskReportBuilder extends Page implements HasForms
                     'task_evaluasi' => $taskEvaluasi,
                     'issue_status_key' => $issueStatusMeta['primary_key'],
                     'issue_evaluasi' => $issueStatusMeta['label'],
+                    'issue_evaluasi_items' => $issueStatusMeta['items'],
                     // Backward compatibility for existing templates/logic.
                     'evaluasi' => $taskEvaluasi,
                 ];
@@ -1031,31 +1051,47 @@ class TaskReportBuilder extends Page implements HasForms
     }
 
     /**
-     * @return array{label:string,primary_key:string}
+     * @return array{
+     *   label:string,
+     *   primary_key:string,
+     *   items:array<int, array{key:string,label:string}>
+     * }
      */
     protected function summarizeIssueStatuses(Collection $selectedIssues): array
     {
         if ($selectedIssues->isEmpty()) {
-            return ['label' => '-', 'primary_key' => 'tbd'];
+            return ['label' => '-', 'primary_key' => 'tbd', 'items' => []];
         }
 
-        $normalizedStatuses = $selectedIssues
-            ->map(fn(Issue $issue) => $this->normalizeReportStatus((string) ($issue->status ?? '')))
+        $statusItems = $selectedIssues
+            ->map(function (Issue $issue): array {
+                $key = $this->normalizeReportStatus((string) ($issue->status ?? ''));
+                return [
+                    'key' => $key,
+                    'label' => $this->reportStatusLabel($key),
+                ];
+            })
+            ->filter(fn(array $item) => ($item['key'] ?? '') !== '')
+            ->values();
+
+        if ($statusItems->isEmpty()) {
+            return ['label' => '-', 'primary_key' => 'tbd', 'items' => []];
+        }
+
+        $normalizedStatuses = $statusItems
+            ->pluck('key')
             ->filter()
             ->unique()
             ->values();
 
-        if ($normalizedStatuses->isEmpty()) {
-            return ['label' => '-', 'primary_key' => 'tbd'];
-        }
-
-        $labels = $normalizedStatuses
-            ->map(fn(string $status) => $this->reportStatusLabel($status))
+        $labels = $statusItems
+            ->pluck('label')
             ->values();
 
         return [
             'label' => $labels->implode(', '),
             'primary_key' => $this->pickPrimaryStatusKey($normalizedStatuses),
+            'items' => $statusItems->all(),
         ];
     }
 

@@ -77,6 +77,7 @@
                     $issueStatusKey = strtolower((string) ($row['issue_status_key'] ?? 'tbd'));
                     $issueEvaluasiText = (string) ($row['issue_evaluasi'] ?? '-');
                     $hasIssueEvaluasi = trim($issueEvaluasiText) !== '' && trim($issueEvaluasiText) !== '-';
+                    $issueEvaluasiItems = collect($row['issue_evaluasi_items'] ?? [])->filter(fn($item) => is_array($item));
                     $issueEvaluasiClass = match ($issueStatusKey) {
                         'closed' => 'eval-closed',
                         'progress' => 'eval-progress',
@@ -98,7 +99,25 @@
                             <div class="eval-pill {{ $taskEvaluasiClass }}">{{ $taskEvaluasiText }}</div>
                             @if ($hasIssueEvaluasi)
                                 <div class="eval-spacer"></div>
-                                <div class="eval-pill {{ $issueEvaluasiClass }}">{{ $issueEvaluasiText }}</div>
+                                @if ($issueEvaluasiItems->isNotEmpty())
+                                    @foreach ($issueEvaluasiItems as $issueItem)
+                                        @php
+                                            $itemKey = strtolower((string) ($issueItem['key'] ?? 'tbd'));
+                                            $itemLabel = (string) ($issueItem['label'] ?? 'TBD');
+                                            $itemClass = match ($itemKey) {
+                                                'closed' => 'eval-closed',
+                                                'progress' => 'eval-progress',
+                                                'opened', 'open' => 'eval-open',
+                                                'overdue' => 'eval-overdue',
+                                                'postponed' => 'eval-postponed',
+                                                default => 'eval-tbd',
+                                            };
+                                        @endphp
+                                        <div class="eval-pill {{ $itemClass }}">{{ $itemLabel }}</div>
+                                    @endforeach
+                                @else
+                                    <div class="eval-pill {{ $issueEvaluasiClass }}">{{ $issueEvaluasiText }}</div>
+                                @endif
                             @endif
                         </div>
                     </td>

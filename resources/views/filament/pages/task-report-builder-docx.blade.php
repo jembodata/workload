@@ -75,6 +75,7 @@
                     $issueStatusKey = strtolower((string) ($row['issue_status_key'] ?? 'tbd'));
                     $issueEvaluasiText = (string) ($row['issue_evaluasi'] ?? '-');
                     $hasIssueEvaluasi = trim($issueEvaluasiText) !== '' && trim($issueEvaluasiText) !== '-';
+                    $issueEvaluasiItems = collect($row['issue_evaluasi_items'] ?? [])->filter(fn($item) => is_array($item));
                     $taskColor = match ($taskStatusKey) {
                         'closed' => '#166534',
                         'progress' => '#a16207',
@@ -102,7 +103,27 @@
                     <td style="border:1px solid #000; padding:4px; vertical-align:top; text-align:center;">
                         <div style="font-weight:700; color:{{ $taskColor }};">{{ $taskEvaluasiText }}</div>
                         @if ($hasIssueEvaluasi)
-                            <div style="color:{{ $issueColor }}; margin-top:8px;">{{ $issueEvaluasiText }}</div>
+                            <div style="margin-top:8px;">
+                                @if ($issueEvaluasiItems->isNotEmpty())
+                                    @foreach ($issueEvaluasiItems as $issueItem)
+                                        @php
+                                            $itemKey = strtolower((string) ($issueItem['key'] ?? 'tbd'));
+                                            $itemLabel = (string) ($issueItem['label'] ?? 'TBD');
+                                            $itemColor = match ($itemKey) {
+                                                'closed' => '#166534',
+                                                'progress' => '#a16207',
+                                                'opened', 'open' => '#1d4ed8',
+                                                'overdue' => '#b91c1c',
+                                                'postponed' => '#4b5563',
+                                                default => '#111827',
+                                            };
+                                        @endphp
+                                        <div style="color:{{ $itemColor }};">{{ $itemLabel }}</div>
+                                    @endforeach
+                                @else
+                                    <div style="color:{{ $issueColor }};">{{ $issueEvaluasiText }}</div>
+                                @endif
+                            </div>
                         @endif
                     </td>
                 </tr>
