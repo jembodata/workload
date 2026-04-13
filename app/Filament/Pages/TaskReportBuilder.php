@@ -731,36 +731,65 @@ class TaskReportBuilder extends Page implements HasForms
 
     protected function estimateTotalPages(array $rows): int
     {
+        $availableUnitsPerPage = 42;
+        $usedUnits = $this->estimateContentUnits($rows);
+
+        return max(1, (int) ceil($usedUnits / $availableUnitsPerPage));
+    }
+
+    protected function estimateContentUnits(array $rows): int
+    {
         if (empty($rows)) {
             return 1;
         }
 
-        $availableUnitsPerPage = 42;
         $usedUnits = 0;
 
         foreach ($rows as $row) {
-            $output = (string) ($row['output'] ?? '');
-            $input = (string) ($row['input'] ?? '');
-
-            $lineUnits = max(
-                1,
-                (int) ceil(mb_strlen($output) / 110),
-                (int) ceil(mb_strlen($input) / 70),
-            );
-
-            $usedUnits += 1 + $lineUnits;
+            $usedUnits += $this->estimateRowUnits($row);
         }
 
-        return max(1, (int) ceil($usedUnits / $availableUnitsPerPage));
+        return $usedUnits;
     }
 
     protected function getReportData(): array
     {
         $previewRows = $this->getPreviewRows();
-        $totalPages = $this->estimateTotalPages($previewRows);
+        $signatures = $this->formatSignatures(data_get($this->formData, 'signatures', []));
+        $contentUnits = $this->estimateContentUnits($previewRows);
+        $basePages = $this->estimateTotalPages($previewRows);
+        $previewPages = $this->buildPreviewPages($previewRows, $signatures);
+
+        $unitsPerPage = 42;
+        $signatureUnits = empty($signatures) ? 0 : 9; // tinggi blok tanda tangan
+        $lastPageUsedUnits = $contentUnits % $unitsPerPage;
+        $lastPageUsedUnits = $lastPageUsedUnits === 0 ? $unitsPerPage : $lastPageUsedUnits;
+        $freeUnitsOnLastPage = $unitsPerPage - $lastPageUsedUnits;
+
+        // Biarkan tetap di halaman saat masih cukup ruang.
+        // Pindah halaman hanya jika benar-benar tidak cukup untuk blok tanda tangan.
+        $signaturePageBreakBefore = !empty($signatures) && ($freeUnitsOnLastPage < $signatureUnits);
+        $totalPages = $basePages + ($signaturePageBreakBefore ? 1 : 0);
+
+        $signaturePushPx = 0;
+        if (!empty($signatures)) {
+            if ($signaturePageBreakBefore) {
+                // Halaman baru khusus tanda tangan: dorong ke bawah (dekat kanan-bawah halaman).
+                $signaturePushPx = max(680, (int) (($unitsPerPage - $signatureUnits) * 22));
+            } else {
+                // Tetap di halaman yang sama: dorong seperlunya mengikuti ruang tersisa.
+                $signaturePushUnits = max(0, $freeUnitsOnLastPage - $signatureUnits);
+                $signaturePushPx = ($signaturePushUnits * 14);
+            }
+
+            // Fine tune: turunkan posisi blok tanda tangan sedikit lagi.
+            $signaturePushPx += 20;
+        }
 
         return [
             'previewRows' => $previewRows,
+            'previewPages' => $previewPages,
+            'previewTotalPages' => count($previewPages),
             'titleId' => (string) data_get($this->formData, 'title_id', ''),
             'titleEn' => (string) data_get($this->formData, 'title_en', ''),
             'meetingPresent' => $this->formatParticipants(data_get($this->formData, 'meeting_present')),
@@ -771,10 +800,118 @@ class TaskReportBuilder extends Page implements HasForms
             'documentNo' => (string) data_get($this->formData, 'document_no', ''),
             'effectiveDate' => $this->formatIndonesianDate(data_get($this->formData, 'effective_date')),
             'revision' => (string) data_get($this->formData, 'revision', ''),
-            'signatures' => $this->formatSignatures(data_get($this->formData, 'signatures', [])),
+            'signatures' => $signatures,
+            'signaturePageBreakBefore' => $signaturePageBreakBefore,
+            'signaturePushPx' => $signaturePushPx,
             'pageLabel' => "1 dari {$totalPages}",
             'logoSrc' => asset('images/logo_report.png'),
         ];
+    }
+
+    protected function estimateRowUnits(array $row): int
+    {
+        $taskOutput = (string) ($row['output'] ?? '');
+        $taskInput = (string) ($row['input'] ?? '');
+        $issueEntries = collect($row['issue_entries'] ?? [])->filter(fn($item) => is_array($item));
+
+        $taskLineUnits = max(
+            1,
+            (int) ceil(mb_strlen($taskOutput) / 62),
+            (int) ceil(mb_strlen($taskInput) / 30),
+        );
+
+        $issueUnits = $issueEntries->sum(function (array $issue): int {
+            $description = (string) ($issue['description'] ?? '');
+            return max(1, (int) ceil(mb_strlen($description) / 62));
+        });
+
+        return $taskLineUnits + $issueUnits + 1;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, array{name:string,company_or_role:string}>  $signatures
+     * @return array<int, array{rows:array<int, array<string,mixed>>,showCover:bool,showSignatures:bool,signaturePushPx:int,pageNumber:int,totalPages:int}>
+     */
+    protected function buildPreviewPages(array $rows, array $signatures): array
+    {
+        // Keep preview pagination consistent with report estimation logic.
+        $firstPageCapacity = 42;
+        $nextPageCapacity = 42;
+        $signatureUnits = empty($signatures) ? 0 : 9;
+
+        $pages = [];
+        $currentRows = [];
+        $usedUnits = 0;
+        $capacity = $firstPageCapacity;
+
+        foreach ($rows as $row) {
+            $rowUnits = $this->estimateRowUnits($row);
+
+            if (!empty($currentRows) && ($usedUnits + $rowUnits) > $capacity) {
+                $pages[] = [
+                    'rows' => $currentRows,
+                    'used_units' => $usedUnits,
+                    'capacity' => $capacity,
+                ];
+                $currentRows = [];
+                $usedUnits = 0;
+                $capacity = $nextPageCapacity;
+            }
+
+            $currentRows[] = $row;
+            $usedUnits += $rowUnits;
+        }
+
+        $pages[] = [
+            'rows' => $currentRows,
+            'used_units' => $usedUnits,
+            'capacity' => $capacity,
+        ];
+
+        if (empty($rows)) {
+            $pages[0]['rows'] = [];
+            $pages[0]['used_units'] = 1;
+        }
+
+        $lastIndex = count($pages) - 1;
+        $freeUnitsLastPage = max(0, (int) (($pages[$lastIndex]['capacity'] ?? $nextPageCapacity) - ($pages[$lastIndex]['used_units'] ?? 0)));
+        $signatureOnNewPage = !empty($signatures) && ($freeUnitsLastPage < $signatureUnits);
+
+        if ($signatureOnNewPage) {
+            $pages[] = [
+                'rows' => [],
+                'used_units' => 0,
+                'capacity' => $nextPageCapacity,
+            ];
+            $lastIndex = count($pages) - 1;
+        }
+
+        $totalPages = count($pages);
+
+        return collect($pages)
+            ->values()
+            ->map(function (array $page, int $index) use ($lastIndex, $totalPages, $signatureUnits): array {
+                $showSignatures = $index === $lastIndex;
+                $capacity = (int) ($page['capacity'] ?? 40);
+                $used = (int) ($page['used_units'] ?? 0);
+                $freeUnits = max(0, $capacity - $used);
+                $pushUnits = $showSignatures ? max(0, $freeUnits - $signatureUnits) : 0;
+                $pushPx = $showSignatures ? ($pushUnits * 14) : 0;
+                if ($showSignatures) {
+                    $pushPx += 20;
+                }
+
+                return [
+                    'rows' => Arr::wrap($page['rows'] ?? []),
+                    'showCover' => $index === 0,
+                    'showSignatures' => $showSignatures,
+                    'signaturePushPx' => $pushPx,
+                    'pageNumber' => $index + 1,
+                    'totalPages' => $totalPages,
+                ];
+            })
+            ->all();
     }
 
     protected function formatMeetingDay(mixed $value): string
@@ -986,8 +1123,9 @@ class TaskReportBuilder extends Page implements HasForms
             ->all();
 
         $issuesByTask = Issue::query()
+            ->with(['staff:id,name'])
             ->whereIn('id', empty($selectedIssueIds) ? [-1] : $selectedIssueIds)
-            ->get(['id', 'task_id', 'issue_name', 'description', 'status'])
+            ->get(['id', 'task_id', 'staff_id', 'issue_name', 'description', 'status'])
             ->groupBy('task_id');
 
         $tasks = Task::query()
@@ -1001,19 +1139,30 @@ class TaskReportBuilder extends Page implements HasForms
             ->filter()
             ->values()
             ->map(function (Task $task, int $index) use ($issuesByTask) {
-                $output = (string) ($task->output ?? '-');
+                $taskOutput = trim((string) ($task->output ?? ''));
+                $taskOutput = $taskOutput !== '' ? $taskOutput : '-';
                 $selectedIssues = $issuesByTask->get($task->id, collect());
                 $taskStatus = $this->normalizeReportStatus((string) ($task->status ?? ''));
 
-                if ($selectedIssues->isNotEmpty()) {
-                    $issueText = $selectedIssues->map(function (Issue $issue): string {
-                        $desc = $this->formatIssueDescription($issue);
+                $issueEntries = $selectedIssues
+                    ->map(function (Issue $issue): ?array {
+                        $description = $this->formatIssueDescription($issue);
+                        if ($description === '') {
+                            return null;
+                        }
 
-                        return $desc === '' ? '' : "- {$desc}";
-                    })->implode("\n");
+                        $statusKey = $this->normalizeReportStatus((string) ($issue->status ?? ''));
 
-                    $output = trim($output . "\n\n" . $issueText);
-                }
+                        return [
+                            'description' => $description,
+                            'status_key' => $statusKey,
+                            'status_label' => $this->reportStatusLabel($statusKey),
+                            'pic' => (string) ($issue->staff?->name ?? '-'),
+                        ];
+                    })
+                    ->filter()
+                    ->values()
+                    ->all();
 
                 $taskEvaluasi = $this->reportStatusLabel($taskStatus);
                 $issueStatusMeta = $this->summarizeIssueStatuses(
@@ -1025,7 +1174,8 @@ class TaskReportBuilder extends Page implements HasForms
                     'no' => $index + 1,
                     'item' => (string) ($task->task_name ?? '-'),
                     'input' => (string) ($task->input ?? '-'),
-                    'output' => $output,
+                    'output' => $taskOutput,
+                    'issue_entries' => $issueEntries,
                     'target' => $task->tanggal ? $this->formatIndonesianDate($task->tanggal) : '-',
                     'pic' => (string) ($task->staff?->name ?? '-'),
                     'task_status_key' => $taskStatus,

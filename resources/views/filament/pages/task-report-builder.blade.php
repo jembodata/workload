@@ -3,12 +3,12 @@
 
     <style>
         :root {
-            --a4-preview-width: 680px;
-            --a4-preview-height: 961px;
+            --a4-preview-width: 794px;
+            --a4-preview-height: 1123px;
         }
 
         #report-builder-layout {
-            display: block;
+            display: none;
             position: relative;
             margin-top: 0;
             padding-top: 0;
@@ -23,21 +23,27 @@
             width: 100%;
         }
 
+        #report-right-preview .a4-sheet {
+            width: min(var(--a4-preview-width), 100%);
+            min-height: var(--a4-preview-height);
+            max-width: 100%;
+            padding: 12mm;
+            border: 1px solid #dfe5ee;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
+        }
+
         #report-right-preview .report-doc {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 13px;
+            font-size: 11px;
             line-height: 1.35;
             color: #000;
         }
         #report-right-preview .report-doc .center { text-align: center; }
         #report-right-preview .report-doc table { border-collapse: collapse; border-spacing: 0; width: 100%; }
-        #report-right-preview .report-doc .document-container {
-            width: 100%;
-            position: relative;
-            min-height: calc(var(--a4-preview-height) - 92px);
-            padding-bottom: 120px;
-        }
-        #report-right-preview .report-doc .header-table { border: 0.75px solid #000; }
+        #report-right-preview .report-doc .document-container { width: 100%; }
+        #report-right-preview .report-doc .header-table { border: 0.75px solid #000; table-layout: fixed; }
         #report-right-preview .report-doc .details-table,
         #report-right-preview .report-doc .data-table-section {
             border-left: 0.75px solid #000;
@@ -51,18 +57,32 @@
             width: 18%;
             text-align: center;
             vertical-align: middle;
-            padding: 8px 6px;
+            padding: 7px 5px;
         }
-        #report-right-preview .report-doc .logo-wrap { width: 92px; height: 46px; margin: 0 auto; overflow: hidden; }
-        #report-right-preview .report-doc .logo-wrap img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+        #report-right-preview .report-doc .logo-wrap {
+            width: 100%;
+            height: 56px;
+            margin: 0 auto;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        #report-right-preview .report-doc .logo-wrap img {
+            width: auto;
+            height: auto;
+            max-width: 112px;
+            max-height: 56px;
+            display: inline-block;
+            vertical-align: middle;
+        }
         #report-right-preview .report-doc .title-cell { text-align: center; vertical-align: middle; }
-        #report-right-preview .report-doc .main-title { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.1; }
-        #report-right-preview .report-doc .sub-title { margin-top: 2px; font-size: 12px; font-style: italic; font-weight: 700; color: #0054a6; }
+        #report-right-preview .report-doc .main-title { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.1; }
+        #report-right-preview .report-doc .sub-title { margin-top: 2px; font-size: 10.5px; font-style: italic; font-weight: 700; color: #0054a6; }
         #report-right-preview .report-doc .info-cell { width: 25%; vertical-align: top; padding: 0; }
         #report-right-preview .report-doc .info-table td {
             border: 0.75px solid #000;
-            font-size: 11px;
-            padding: 2px 6px;
+            font-size: 10px;
+            padding: 2px 5px;
             line-height: 1.2;
             vertical-align: middle;
         }
@@ -72,24 +92,24 @@
         #report-right-preview .report-doc .info-table td:last-child { border-right: 0; }
         #report-right-preview .report-doc .info-table .label { width: 45%; white-space: nowrap; font-weight: 700; }
 
-        #report-right-preview .report-doc .details-table td { border: 0.75px solid #000; padding: 3px 6px; }
+        #report-right-preview .report-doc .details-table { table-layout: fixed; }
+        #report-right-preview .report-doc .details-table td { border: 0.75px solid #000; padding: 2px 5px; }
         #report-right-preview .report-doc .details-table tr:first-child td { border-top: 0; }
-        #report-right-preview .report-doc .left-empty-cell { width: 18%; }
-        #report-right-preview .report-doc .detail-label { width: 15%; white-space: nowrap; font-weight: 700; }
-        #report-right-preview .report-doc .detail-value { width: 67%; }
+        #report-right-preview .report-doc .detail-label { width: 18%; white-space: nowrap; font-weight: 700; }
+        #report-right-preview .report-doc .detail-value { width: 82%; }
 
         #report-right-preview .report-doc .data-table-section { table-layout: fixed; }
         #report-right-preview .report-doc .data-table-section th,
         #report-right-preview .report-doc .data-table-section td {
             border: 0.75px solid #000;
-            padding: 4px 5px;
+            padding: 4px;
             vertical-align: top;
         }
         #report-right-preview .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
-        #report-right-preview .report-doc .data-table-section th { text-align: center; font-size: 12px; font-weight: 700; }
+        #report-right-preview .report-doc .data-table-section th { text-align: center; font-size: 10px; font-weight: 700; }
         #report-right-preview .report-doc .col-no { width: 4%; }
-        #report-right-preview .report-doc .col-item { width: 10%; }
-        #report-right-preview .report-doc .col-pembahasan { width: 20%; }
+        #report-right-preview .report-doc .col-item { width: 14%; }
+        #report-right-preview .report-doc .col-pembahasan { width: 16%; }
         #report-right-preview .report-doc .col-rencana { width: 36%; }
         #report-right-preview .report-doc .col-target { width: 10%; }
         #report-right-preview .report-doc .col-pic { width: 10%; }
@@ -99,29 +119,32 @@
         }
         #report-right-preview .report-doc .eval-pill {
             display: block;
-            border: 1px solid #111827;
+            border: 0.75px solid #000;
             border-radius: 2px;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
-            line-height: 1.3;
+            line-height: 1.25;
             padding: 2px 3px;
         }
-        #report-right-preview .report-doc .eval-pill + .eval-pill { margin-top: 4px; }
-        #report-right-preview .report-doc .eval-spacer { height: 20px; }
+        #report-right-preview .report-doc .eval-pill + .eval-pill { margin-top: 3px; }
+        #report-right-preview .report-doc .eval-spacer { height: 16px; }
         #report-right-preview .report-doc .eval-tbd { background: #e5e7eb; color: #111827; }
         #report-right-preview .report-doc .eval-progress { background: #fde047; color: #111827; }
         #report-right-preview .report-doc .eval-open { background: #93c5fd; color: #111827; }
         #report-right-preview .report-doc .eval-overdue { background: #fca5a5; color: #111827; }
         #report-right-preview .report-doc .eval-postponed { background: #d1d5db; color: #111827; }
         #report-right-preview .report-doc .eval-closed { background: #86efac; color: #111827; }
-        #report-right-preview .report-doc .empty-message { color: #6b7280; padding: 10px 6px; }
-        #report-right-preview .report-doc .signature-section {
-            position: absolute;
-            right: 8px;
-            bottom: 8px;
-            width: 52%;
-            padding: 0;
+        #report-right-preview .report-doc .empty-message { color: #6b7280; padding: 9px 5px; }
+        #report-right-preview .report-doc .signature-section { width: 52%; padding: 0; margin-left: auto; margin-right: 0; }
+        #report-right-preview .report-doc .signature-section.signature-section--flow {
+            display: block;
+            margin: 0 0 0 auto;
+            page-break-inside: avoid;
+        }
+        #report-right-preview .report-doc .signature-section.signature-section--page-break {
+            page-break-before: always;
+            margin: 0 0 0 auto;
         }
         #report-right-preview .report-doc .signature-table {
             width: 100%;
@@ -137,11 +160,11 @@
             border: 0 !important;
         }
         #report-right-preview .report-doc .signature-cell-empty { padding: 0; }
-        #report-right-preview .report-doc .signature-label { font-size: 11px; }
-        #report-right-preview .report-doc .signature-space { height: 36px; }
-        #report-right-preview .report-doc .signature-line { border-top: 1px solid #000; margin: 0 8px 2px; }
-        #report-right-preview .report-doc .signature-name { font-size: 11px; font-weight: 700; }
-        #report-right-preview .report-doc .signature-role { font-size: 10px; color: #222; }
+        #report-right-preview .report-doc .signature-label { font-size: 10px; }
+        #report-right-preview .report-doc .signature-space { height: 34px; }
+        #report-right-preview .report-doc .signature-line { border-top: 0.75px solid #000; margin: 0 8px 2px; }
+        #report-right-preview .report-doc .signature-name { font-size: 10px; font-weight: 700; }
+        #report-right-preview .report-doc .signature-role { font-size: 9.5px; color: #222; }
 
         #report-non-desktop-notice {
             display: block;
@@ -161,6 +184,7 @@
             }
 
             #report-builder-layout {
+                display: block;
                 padding-right: calc(min(48vw, 900px) + 24px);
                 margin-top: 0;
             }
@@ -384,11 +408,43 @@
             </div>
             <div id="report-right-preview-scroll" class="overflow-auto"
                 style="padding: 14px; border: 1px solid #d9dee7; border-radius: 14px; background: #edf1f6; box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);">
-                <div class="mx-auto overflow-hidden bg-white"
-                    style="width: min(var(--a4-preview-width), 100%); min-height: var(--a4-preview-height); max-width: 100%; padding: 22px; border: 1px solid #dfe5ee; border-radius: 10px; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);">
-                    <div class="report-doc">
-                        @include('filament.pages.partials.task-report-document')
-                    </div>
+                <div class="space-y-4">
+                    @if (($previewTotalPages ?? 1) > 1)
+                        @php
+                            $pages = $previewPages ?? [];
+                            if (empty($pages)) {
+                                $pages = [[
+                                    'rows' => $previewRows ?? [],
+                                    'showCover' => true,
+                                    'showSignatures' => true,
+                                    'signaturePushPx' => (int) ($signaturePushPx ?? 0),
+                                    'pageNumber' => 1,
+                                    'totalPages' => 1,
+                                ]];
+                            }
+                        @endphp
+
+                        @foreach ($pages as $page)
+                            <div class="a4-sheet mx-auto overflow-hidden">
+                                <div class="report-doc">
+                                    @include('filament.pages.partials.task-report-preview-page', [
+                                        'pageRows' => $page['rows'] ?? [],
+                                        'showCover' => (bool) ($page['showCover'] ?? false),
+                                        'showSignatures' => (bool) ($page['showSignatures'] ?? false),
+                                        'signaturePushPx' => (int) ($page['signaturePushPx'] ?? 0),
+                                        'pageNumber' => (int) ($page['pageNumber'] ?? 1),
+                                        'totalPages' => (int) ($page['totalPages'] ?? 1),
+                                    ])
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="a4-sheet mx-auto overflow-hidden">
+                            <div class="report-doc">
+                                @include('filament.pages.partials.task-report-document')
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </section>

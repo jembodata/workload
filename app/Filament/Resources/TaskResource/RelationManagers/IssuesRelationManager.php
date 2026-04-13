@@ -193,38 +193,33 @@ class IssuesRelationManager extends RelationManager
                     ->tooltip(fn(Model $record): string => strip_tags($record->description))
                     ->formatStateUsing(fn(string $state): string => strip_tags($state)),
 
-                Tables\Columns\TextColumn::make('status'),
-
-                // Tables\Columns\TextColumn::make('status')
-                //     ->label('Status')
-                //     ->formatStateUsing(function (string $state): \Illuminate\Support\HtmlString {
-                //         // Mapping konfigurasi Lucide, Warna, dan Rating (Sesuai Form kamu)
-                //         $statuses = [
-                //             'backlog'     => ['icon' => 'circle-dashed',     'color' => '#9ca3af', 'label' => 'Backlog',     'rating' => '1'],
-                //             'open'        => ['icon' => 'circle',            'color' => '#0ea5e9', 'label' => 'Open',       'rating' => '2'],
-                //             'in_progress' => ['icon' => 'circle-dot-dashed', 'color' => '#eab308', 'label' => 'In Progress', 'rating' => '3'],
-                //             'done'        => ['icon' => 'check-circle-2',    'color' => '#5e6ad2', 'label' => 'Done',        'rating' => '4'],
-                //             'canceled'    => ['icon' => 'x-circle',          'color' => '#ef4444', 'label' => 'Canceled',    'rating' => '5'],
-                //             'duplicate'   => ['icon' => 'copy',              'color' => '#ef4444', 'label' => 'Duplicate',   'rating' => '6'],
-                //         ];
-
-                //         $config = $statuses[$state] ?? ['icon' => 'help-circle', 'color' => '#9ca3af', 'label' => $state, 'rating' => '0'];
-
-                //         return new \Illuminate\Support\HtmlString("
-                //             <div style='display:flex; align-items:center; width: 100%; gap:8px;'>
-                //                 <img src='https://unpkg.com/lucide-static@latest/icons/{$config['icon']}.svg' 
-                //                                 style='width:1.1rem; height:1.1rem; filter: invert(30%) sepia(100%) saturate(500%) hue-rotate(0deg);' 
-                //                                 alt='icon' />
-
-                //                 <span style='font-size:0.85rem;'>{$config['label']}</span>
-
-                //                 <div style='flex-grow: 1;'></div>
-
-                //                 <span style='opacity:0.3; font-family:monospace; font-size:0.75rem;'>{$config['rating']}</span>
-                //             </div>
-                //         ");
-                //     })
-                //     ->sortable(),
+                Tables\Columns\TextColumn::make('status')
+                    // ->label(new HtmlString('Evaluasi <br/> Efektivitas'))
+                    ->badge()
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'opened'    => 'Opened',
+                        'progress'  => 'Progress',
+                        'closed'    => 'Closed',
+                        'overdue'   => 'Overdue',
+                        'postponed' => 'Postponed',
+                        default     => ucfirst($state),
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'opened'    => 'heroicon-o-play-circle',
+                        'progress'  => 'heroicon-o-arrow-path',
+                        'closed'    => 'heroicon-o-check-circle',
+                        'overdue'   => 'heroicon-o-x-circle',
+                        'postponed' => 'heroicon-o-pause-circle',
+                        default     => 'heroicon-o-information-circle',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'opened'    => 'info',
+                        'progress'  => 'warning',
+                        'closed'    => 'success',
+                        'overdue'   => 'danger',
+                        'postponed' => 'gray',
+                        default     => 'primary',
+                    }),
 
                 // Assignee (Avatar User)
                 Tables\Columns\ImageColumn::make('staff.avatar_url')

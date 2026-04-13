@@ -14,7 +14,7 @@
         .report-doc .center { text-align: center; }
         .report-doc table { border-collapse: collapse; border-spacing: 0; width: 100%; }
         .report-doc .document-container { width: 100%; }
-        .report-doc .header-table { border: 0.75px solid #000; }
+        .report-doc .header-table { border: 0.75px solid #000; table-layout: fixed; }
         .report-doc .details-table,
         .report-doc .data-table-section {
             border-left: 0.75px solid #000;
@@ -63,11 +63,11 @@
         .report-doc .info-table td:last-child { border-right: 0; }
         .report-doc .info-table .label { width: 45%; white-space: nowrap; font-weight: 700; }
 
+        .report-doc .details-table { table-layout: fixed; }
         .report-doc .details-table td { border: 0.75px solid #000; padding: 2px 5px; }
         .report-doc .details-table tr:first-child td { border-top: 0; }
-        .report-doc .left-empty-cell { width: 18%; }
-        .report-doc .detail-label { width: 15%; white-space: nowrap; font-weight: 700; }
-        .report-doc .detail-value { width: 67%; }
+        .report-doc .detail-label { width: 18%; white-space: nowrap; font-weight: 700; }
+        .report-doc .detail-value { width: 82%; }
 
         .report-doc .data-table-section { table-layout: fixed; }
         .report-doc .data-table-section th,
@@ -79,8 +79,8 @@
         .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
         .report-doc .data-table-section th { text-align: center; font-size: 10px; font-weight: 700; }
         .report-doc .col-no { width: 4%; }
-        .report-doc .col-item { width: 10%; }
-        .report-doc .col-pembahasan { width: 20%; }
+        .report-doc .col-item { width: 14%; }
+        .report-doc .col-pembahasan { width: 16%; }
         .report-doc .col-rencana { width: 36%; }
         .report-doc .col-target { width: 10%; }
         .report-doc .col-pic { width: 10%; }
@@ -107,13 +107,15 @@
         .report-doc .eval-postponed { background: #d1d5db; color: #111827; }
         .report-doc .eval-closed { background: #86efac; color: #111827; }
         .report-doc .empty-message { color: #6b7280; padding: 9px 5px; }
-        .report-doc .signature-section {
-            position: fixed;
-            right: 12mm;
-            bottom: 12mm;
-            width: 52%;
-            padding: 0;
-            margin: 0;
+        .report-doc .signature-section { width: 52%; padding: 0; margin-left: auto; margin-right: 0; }
+        .report-doc .signature-section.signature-section--flow {
+            display: block;
+            margin: 0 0 0 auto;
+            page-break-inside: avoid;
+        }
+        .report-doc .signature-section.signature-section--page-break {
+            page-break-before: always;
+            margin: 0 0 0 auto;
         }
         .report-doc .signature-table {
             width: 100%;

@@ -1,61 +1,63 @@
 <div class="document-container">
-    <table class="header-table">
-        <colgroup>
-            <col style="width: 18%;">
-            <col style="width: 57%;">
-            <col style="width: 25%;">
-        </colgroup>
-        <tbody>
-            <tr>
-                <td class="logo-cell">
-                    <div class="logo-wrap">
-                        <img src="{{ $logoSrc }}" alt="Logo">
-                    </div>
-                </td>
-                <td class="title-cell">
-                    <div class="main-title">{{ $titleId ?: '-' }}</div>
-                    <div class="sub-title">{{ $titleEn ?: '-' }}</div>
-                </td>
-                <td class="info-cell">
-                    <table class="info-table">
-                        <tr><td class="label">No. Document</td><td>{{ $documentNo ?: '-' }}</td></tr>
-                        <tr><td class="label">Effective date</td><td>{{ $effectiveDate ?: '-' }}</td></tr>
-                        <tr><td class="label">Revision</td><td>{{ $revision ?: '-' }}</td></tr>
-                        <tr><td class="label">Page</td><td>{{ $pageLabel ?: '-' }}</td></tr>
-                    </table>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    @if ($showCover ?? false)
+        <table class="header-table">
+            <colgroup>
+                <col style="width: 18%;">
+                <col style="width: 57%;">
+                <col style="width: 25%;">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <td class="logo-cell">
+                        <div class="logo-wrap">
+                            <img src="{{ $logoSrc }}" alt="Logo">
+                        </div>
+                    </td>
+                    <td class="title-cell">
+                        <div class="main-title">{{ $titleId ?: '-' }}</div>
+                        <div class="sub-title">{{ $titleEn ?: '-' }}</div>
+                    </td>
+                    <td class="info-cell">
+                        <table class="info-table">
+                            <tr><td class="label">No. Document</td><td>{{ $documentNo ?: '-' }}</td></tr>
+                            <tr><td class="label">Effective date</td><td>{{ $effectiveDate ?: '-' }}</td></tr>
+                            <tr><td class="label">Revision</td><td>{{ $revision ?: '-' }}</td></tr>
+                            <tr><td class="label">Page</td><td>{{ ($pageNumber ?? 1) . ' dari ' . ($totalPages ?? 1) }}</td></tr>
+                        </table>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
 
-    <table class="details-table">
-        <colgroup>
-            <col style="width: 18%;">
-            <col style="width: 82%;">
-        </colgroup>
-        <tbody>
-            <tr>
-                <td class="detail-label">Hadir</td>
-                <td class="detail-value">: {{ $meetingPresent ?: '-' }}</td>
-            </tr>
-            <tr>
-                <td class="detail-label">Absen</td>
-                <td class="detail-value">: {{ $meetingAbsent ?: '-' }}</td>
-            </tr>
-            <tr>
-                <td class="detail-label">Hari</td>
-                <td class="detail-value">: {{ $meetingDay ?: '-' }}</td>
-            </tr>
-            <tr>
-                <td class="detail-label">Waktu</td>
-                <td class="detail-value">: {{ $meetingTime ?: '-' }}</td>
-            </tr>
-            <tr>
-                <td class="detail-label">Tempat</td>
-                <td class="detail-value">: {{ $meetingPlace ?: '-' }}</td>
-            </tr>
-        </tbody>
-    </table>
+        <table class="details-table">
+            <colgroup>
+                <col style="width: 18%;">
+                <col style="width: 82%;">
+            </colgroup>
+            <tbody>
+                <tr>
+                    <td class="detail-label">Hadir</td>
+                    <td class="detail-value">: {{ $meetingPresent ?: '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Absen</td>
+                    <td class="detail-value">: {{ $meetingAbsent ?: '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Hari</td>
+                    <td class="detail-value">: {{ $meetingDay ?: '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Waktu</td>
+                    <td class="detail-value">: {{ $meetingTime ?: '-' }}</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Tempat</td>
+                    <td class="detail-value">: {{ $meetingPlace ?: '-' }}</td>
+                </tr>
+            </tbody>
+        </table>
+    @endif
 
     <table class="data-table-section">
         <thead>
@@ -70,7 +72,11 @@
             </tr>
         </thead>
         <tbody>
-            @forelse ($previewRows as $row)
+            @php
+                $rows = collect($pageRows ?? [])->filter(fn($item) => is_array($item));
+            @endphp
+
+            @forelse ($rows as $row)
                 @php
                     $taskStatusKey = strtolower((string) ($row['task_status_key'] ?? $row['evaluasi'] ?? ''));
                     $taskEvaluasiText = (string) ($row['task_evaluasi'] ?? ucfirst(str_replace('_', ' ', (string) ($row['evaluasi'] ?? 'TBD'))));
@@ -124,32 +130,21 @@
                 @endforeach
             @empty
                 <tr class="data-row">
-                    <td colspan="7" class="center empty-message">Belum ada task dipilih.</td>
+                    <td colspan="7" class="center empty-message">{{ ($showCover ?? false) ? 'Belum ada task dipilih.' : '' }}</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
-    @php
-        $signatureRows = collect($signatures ?? [])
-            ->filter(fn($item) => filled($item['name'] ?? null) || filled($item['company_or_role'] ?? null))
-            ->take(3)
-            ->values();
-    @endphp
-
-    @if ($signatureRows->isNotEmpty())
+    @if (($showSignatures ?? false) && !empty($signatures ?? []))
         @php
-            $signatureCells = collect($signatureRows->all());
+            $signatureCells = collect($signatures ?? [])->values();
             while ($signatureCells->count() < 3) {
                 $signatureCells->prepend(null);
             }
             $signaturePushPx = (int) ($signaturePushPx ?? 0);
-            $signaturePageBreakBefore = (bool) ($signaturePageBreakBefore ?? false);
         @endphp
-        <div
-            class="signature-section signature-section--flow {{ $signaturePageBreakBefore ? 'signature-section--page-break' : '' }}"
-            style="padding-top: {{ $signaturePushPx }}px;"
-        >
+        <div class="signature-section signature-section--flow" style="padding-top: {{ $signaturePushPx }}px;">
             <table class="signature-table">
                 <tr>
                     @foreach ($signatureCells as $signature)

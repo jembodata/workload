@@ -121,7 +121,7 @@ class TaskResource extends Resource
                     ->formatStateUsing(fn($state) => $state ? 'Yes' : 'No')
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // Jika bukan long term → tampilkan tanggal & estimasi jam
+                // Jika bukan long term â†’ tampilkan tanggal & estimasi jam
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Target')
                     ->date('d-m-y')
@@ -145,7 +145,7 @@ class TaskResource extends Resource
 
                 Tables\Columns\TextColumn::make('allocation_hours')
                     ->label(new HtmlString('Alokasi <br/> Jam'))
-                    ->formatStateUsing(fn($state) => $state ?? 0) // kalau null → 0
+                    ->formatStateUsing(fn($state) => $state ?? 0) // kalau null â†’ 0
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->hidden(fn($record) => $record?->is_long_term),
 
@@ -662,7 +662,7 @@ class TaskResource extends Resource
                         ->label('Task')
                         ->maxLength(255),
 
-                    // Jika bukan long term → tampilkan tanggal & estimasi jam
+                    // Jika bukan long term â†’ tampilkan tanggal & estimasi jam
                     Forms\Components\DatePicker::make('tanggal')
                         // ->minDate(now()->today())
                         ->label(function (Get $get) {
@@ -720,7 +720,7 @@ class TaskResource extends Resource
                         ->visible(fn(Get $get) => $get('is_long_term'))
                         ->required(fn(Get $get) => $get('is_long_term')),
 
-                    // Jika long term → tampilkan alokasi jam + start/end date
+                    // Jika long term â†’ tampilkan alokasi jam + start/end date
                     Forms\Components\TextInput::make('allocation_hours')
                         ->label('Alokasi Jam per Hari')
                         ->numeric()
@@ -733,49 +733,20 @@ class TaskResource extends Resource
                         ->label('Evaluasi Efektivitas')
                         ->required()
                         ->native(false)
-                        ->options([
-                            'opened' => 'Opened',
-                            'progress' => 'Progress',
-                            'closed' => 'Closed',
-                            'overdue' => 'Overdue',
-                            'postponed' => 'Postponed',
-                        ]),
+                        ->allowHtml()
+                        ->selectablePlaceholder(false)
+                        ->default('opened')
+                        ->options(static::statusSelectOptions()),
 
 
                     Forms\Components\Select::make('priority')
                         ->label('Priority')
                         ->required()
                         ->native(false)
-                        ->options([
-                            'not_priority' => '
-                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                    <span>⚪ No Priority</span>
-                                    <span style="opacity:0.5; margin-left:160px;">0</span>
-                                </div>',
-                            'urgent' => '
-                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                    <span>❗ Urgent</span>
-                                    <span style="opacity:0.5; margin-left:190px;">1</span>
-                                </div>',
-                            'high' => '
-                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                    <span>🟠 High</span>
-                                    <span style="opacity:0.5; margin-left:200px;">2</span>
-                                </div>',
-                            'medium' => '
-                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                    <span>🟡 Medium</span>
-                                    <span style="opacity:0.5; margin-left:178px;">3</span>
-                                </div>',
-                            'low' => '
-                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                    <span>🟢 Low</span>
-                                    <span style="opacity:0.5; margin-left:205px;">4</span>
-                                </div>',
-                        ])
-
+                        ->allowHtml()
+                        ->selectablePlaceholder(false)
                         ->default('not_priority')
-                        ->allowHtml(),
+                        ->options(static::prioritySelectOptions()),
 
                     Forms\Components\TextInput::make('progress')
                         ->label('%')
@@ -788,5 +759,89 @@ class TaskResource extends Resource
                 ])
                 ->columns(1)
         ];
+    }
+
+    private static function statusSelectOptions(): array
+    {
+        $statuses = [
+            'opened' => [
+                'label' => 'Opened',
+                'icon' => 'play-circle',
+            ],
+            'progress' => [
+                'label' => 'Progress',
+                'icon' => 'loader-circle',
+            ],
+            'closed' => [
+                'label' => 'Closed',
+                'icon' => 'check-circle-2',
+            ],
+            'overdue' => [
+                'label' => 'Overdue',
+                'icon' => 'x-circle',
+            ],
+            'postponed' => [
+                'label' => 'Postponed',
+                'icon' => 'pause-circle',
+            ],
+        ];
+
+        $options = [];
+
+        foreach ($statuses as $key => $status) {
+            $options[$key] = sprintf(
+                "<div style='display:flex;align-items:center;gap:10px;width:100%%;'>
+                    <img src='https://unpkg.com/lucide-static@latest/icons/%s.svg' alt='%s' style='width:14px;height:14px;opacity:.75;' />
+                    <span style='font-size:13px;'>%s</span>
+                </div>",
+                $status['icon'],
+                $status['label'],
+                $status['label']
+            );
+        }
+
+        return $options;
+    }
+
+    private static function prioritySelectOptions(): array
+    {
+        $priorities = [
+            'urgent' => [
+                'label' => 'Urgent',
+                'icon' => 'alert-circle',
+            ],
+            'high' => [
+                'label' => 'High',
+                'icon' => 'signal-high',
+            ],
+            'medium' => [
+                'label' => 'Medium',
+                'icon' => 'signal-medium',
+            ],
+            'low' => [
+                'label' => 'Low',
+                'icon' => 'signal-low',
+            ],
+            'not_priority' => [
+                'label' => 'No Priority',
+                'icon' => 'minus',
+            ],
+        ];
+
+        $options = [];
+
+        foreach ($priorities as $key => $priority) {
+            $options[$key] = sprintf(
+                "<div style='display:flex;align-items:center;gap:10px;width:100%%;'>
+                    <img src='https://unpkg.com/lucide-static@latest/icons/%s.svg' alt='%s' style='width:14px;height:14px;opacity:.75;' />
+                    <span style='font-size:13px;'>%s</span>
+                </div>",
+                $priority['icon'],
+                $priority['label'],
+                $priority['label']
+            );
+        }
+
+        return $options;
     }
 }
