@@ -61,6 +61,36 @@ class TaskReportBuilder extends Page implements HasForms
     /** @var array<string> */
     public array $selectedIssueIds = [];
 
+    public int $activeBuilderStep = 1;
+
+    /** @var array<string, bool> */
+    public array $collapsedBuilderSteps = [
+        '1' => false,
+        '2' => false,
+        '3' => true,
+        '4' => true,
+    ];
+
+    public string $taskJumpPage = '';
+    public string $issueJumpPage = '';
+    public string $previewZoom = 'fit';
+    public string $previewSyncedFingerprint = '';
+    public bool $previewDirty = false;
+    public ?string $lastPreviewAt = null;
+    public ?string $lastRenderedAt = null;
+
+    /** @var array<string> */
+    public array $taskOrderBaseline = [];
+
+    /** @var array<string> */
+    public array $issueOrderBaseline = [];
+
+    /** @var array<string> */
+    public array $taskOrderUndo = [];
+
+    /** @var array<string> */
+    public array $issueOrderUndo = [];
+
     public function mount(): void
     {
         $this->form->fill([
@@ -76,6 +106,21 @@ class TaskReportBuilder extends Page implements HasForms
             'revision' => '0',
             'signatures' => [],
         ]);
+
+        $this->taskJumpPage = '1';
+        $this->issueJumpPage = '1';
+        $this->refreshPreviewState();
+    }
+
+    /**
+     * Disable Filament default header action bar for this page.
+     * We already provide custom actions in the preview toolbar.
+     *
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [];
     }
 
     public function renderPdfAction(): Action
@@ -159,6 +204,7 @@ class TaskReportBuilder extends Page implements HasForms
         ]);
 
         $url = route('task-report.history.pdf', ['history' => $history]);
+        $this->markReportRendered();
         $this->js("window.open('{$url}', '_blank')");
     }
 
@@ -206,6 +252,7 @@ class TaskReportBuilder extends Page implements HasForms
         ]);
 
         $url = route('task-report.history.docx', ['history' => $history]);
+        $this->markReportRendered();
         $this->js("window.open('{$url}', '_blank')");
     }
 
@@ -449,22 +496,48 @@ class TaskReportBuilder extends Page implements HasForms
 
     protected function getViewData(): array
     {
+        $this->syncTaskOrderBaseline();
+        $this->syncIssueOrderBaseline();
+
         $taskPickerData = $this->getTaskPickerData();
         $issuePickerData = $this->getIssuePickerData();
+        $reportData = $this->getReportData();
+
+        $this->taskJumpPage = (string) ($taskPickerData['meta']['page'] ?? 1);
+        $this->issueJumpPage = (string) ($issuePickerData['meta']['page'] ?? 1);
+        $this->previewDirty = $this->currentPreviewFingerprint() !== $this->previewSyncedFingerprint;
+
+        $summaryWarnings = $this->buildSummaryWarnings($reportData);
+        $stepStates = $this->getBuilderStepStates($summaryWarnings);
 
         return array_merge([
             'availableTasks' => $taskPickerData['items'],
             'taskPickerMeta' => $taskPickerData['meta'],
+            'selectedTasksOrdered' => $this->getSelectedTasksOrdered(),
             'staffFilterOptions' => Staff::query()->orderBy('name')->pluck('name', 'id')->toArray(),
             'projectFilterOptions' => Project::query()->orderBy('project_name')->pluck('project_name', 'id')->toArray(),
             'statusFilterOptions' => Task::query()->select('status')->distinct()->orderBy('status')->pluck('status')->all(),
 
             'availableIssues' => $issuePickerData['items'],
             'issuePickerMeta' => $issuePickerData['meta'],
+            'selectedIssuesOrdered' => $this->getSelectedIssuesOrdered(),
             'issueStatusOptions' => Issue::query()->select('status')->distinct()->orderBy('status')->pluck('status')->all(),
             'issuePriorityOptions' => Issue::query()->select('priority')->distinct()->orderBy('priority')->pluck('priority')->all(),
             'issueStaffOptions' => Staff::query()->orderBy('name')->pluck('name', 'id')->toArray(),
-        ], $this->getReportData());
+            'taskFilterChips' => $this->buildTaskFilterChips(),
+            'issueFilterChips' => $this->buildIssueFilterChips(),
+            'summaryWarnings' => $summaryWarnings,
+            'builderStepStates' => $stepStates,
+            'canAccessIssueStep' => $this->canAccessBuilderStep(3),
+            'canAccessFinalStep' => $this->canAccessBuilderStep(4),
+            'summaryTaskCount' => count($this->selectedTaskIds),
+            'summaryIssueCount' => count($this->selectedIssueIds),
+            'summaryEstimatedPages' => (int) ($reportData['previewTotalPages'] ?? 1),
+            'previewDirty' => $this->previewDirty,
+            'lastPreviewAt' => $this->lastPreviewAt,
+            'lastRenderedAt' => $this->lastRenderedAt,
+            'previewZoom' => $this->previewZoom,
+        ], $reportData);
     }
 
     // region: update hooks
@@ -481,6 +554,9 @@ class TaskReportBuilder extends Page implements HasForms
         $selectedTaskIds = $this->getSelectedTaskIdsAsInt();
         if (empty($selectedTaskIds)) {
             $this->selectedIssueIds = [];
+            $this->syncTaskOrderBaseline();
+            $this->syncIssueOrderBaseline();
+            $this->ensureActiveStepIsReachable();
             $this->issuePickerPage = 1;
             return;
         }
@@ -497,6 +573,9 @@ class TaskReportBuilder extends Page implements HasForms
             fn($id) => isset($allowedMap[(string) $id])
         ));
 
+        $this->syncTaskOrderBaseline();
+        $this->syncIssueOrderBaseline();
+        $this->ensureActiveStepIsReachable();
         $this->issuePickerPage = 1;
     }
 
@@ -508,6 +587,13 @@ class TaskReportBuilder extends Page implements HasForms
             ->unique()
             ->values()
             ->all();
+
+        $this->syncIssueOrderBaseline();
+    }
+
+    public function updatedFormData(): void
+    {
+        // Form changes affect final content and should mark preview dirty through fingerprint diff.
     }
 
     public function updatedTaskSearch(): void { $this->taskPickerPage = 1; }
@@ -521,6 +607,49 @@ class TaskReportBuilder extends Page implements HasForms
     public function updatedIssueFilterPriority(): void { $this->issuePickerPage = 1; }
     public function updatedIssueFilterStaffId(): void { $this->issuePickerPage = 1; }
     public function updatedShowOnlySelectedIssues(): void { $this->issuePickerPage = 1; }
+    // endregion
+
+    // region: builder step controls
+    public function openBuilderStep(int $step): void
+    {
+        if (!$this->canAccessBuilderStep($step)) {
+            return;
+        }
+
+        $this->activeBuilderStep = $step;
+        $this->collapsedBuilderSteps[(string) $step] = false;
+    }
+
+    public function toggleBuilderStep(int $step): void
+    {
+        if (!$this->canAccessBuilderStep($step)) {
+            return;
+        }
+
+        $key = (string) $step;
+        $isCollapsed = (bool) ($this->collapsedBuilderSteps[$key] ?? false);
+        $this->collapsedBuilderSteps[$key] = !$isCollapsed;
+
+        if (!$this->collapsedBuilderSteps[$key]) {
+            $this->activeBuilderStep = $step;
+        }
+    }
+
+    public function refreshPreviewState(): void
+    {
+        $this->previewSyncedFingerprint = $this->currentPreviewFingerprint();
+        $this->lastPreviewAt = $this->uiTimestamp();
+        $this->previewDirty = false;
+    }
+
+    public function setPreviewZoom(string $zoom): void
+    {
+        if (!in_array($zoom, ['fit', '1', '0.75'], true)) {
+            return;
+        }
+
+        $this->previewZoom = $zoom;
+    }
     // endregion
 
     // region: task picker actions
@@ -538,10 +667,19 @@ class TaskReportBuilder extends Page implements HasForms
         }
     }
 
+    public function goToTaskPickerPage(): void
+    {
+        $requested = (int) trim($this->taskJumpPage);
+        $lastPage = $this->resolveTaskPickerLastPage();
+        $this->taskPickerPage = max(1, min($requested, $lastPage));
+        $this->taskJumpPage = (string) $this->taskPickerPage;
+    }
+
     public function selectCurrentPageTasks(): void
     {
         $ids = $this->getTaskPickerData()['items']->pluck('id')->map(fn($id) => (string) $id)->all();
         $this->selectedTaskIds = array_values(array_unique([...$this->selectedTaskIds, ...$ids]));
+        $this->updatedSelectedTaskIds();
     }
 
     public function selectFilteredTasks(): void
@@ -553,6 +691,7 @@ class TaskReportBuilder extends Page implements HasForms
             ->all();
 
         $this->selectedTaskIds = array_values(array_unique([...$this->selectedTaskIds, ...$ids]));
+        $this->updatedSelectedTaskIds();
     }
 
     public function unselectFilteredTasks(): void
@@ -569,12 +708,125 @@ class TaskReportBuilder extends Page implements HasForms
             $this->selectedTaskIds,
             fn($id) => !isset($filteredMap[(string) $id])
         ));
+        $this->updatedSelectedTaskIds();
     }
 
     public function clearSelectedTasks(): void
     {
         $this->selectedTaskIds = [];
         $this->selectedIssueIds = [];
+        $this->updatedSelectedTaskIds();
+        $this->updatedSelectedIssueIds();
+    }
+
+    /** @param array<int, string|int> $orderedIds */
+    public function reorderSelectedTasks(array $orderedIds): void
+    {
+        $this->rememberTaskOrderForUndo();
+        $this->selectedTaskIds = $this->applyExplicitOrder($this->selectedTaskIds, $orderedIds);
+    }
+
+    public function moveTaskSelectionUp(string|int $taskId): void
+    {
+        $this->rememberTaskOrderForUndo();
+        $this->selectedTaskIds = $this->moveIdPosition($this->selectedTaskIds, (string) $taskId, -1);
+    }
+
+    public function moveTaskSelectionDown(string|int $taskId): void
+    {
+        $this->rememberTaskOrderForUndo();
+        $this->selectedTaskIds = $this->moveIdPosition($this->selectedTaskIds, (string) $taskId, 1);
+    }
+
+    public function resetTaskOrder(): void
+    {
+        if (empty($this->selectedTaskIds)) {
+            return;
+        }
+
+        $this->rememberTaskOrderForUndo();
+        $this->selectedTaskIds = $this->applyExplicitOrder($this->selectedTaskIds, $this->taskOrderBaseline);
+    }
+
+    public function sortSelectedTasksByName(): void
+    {
+        $taskIds = $this->getSelectedTaskIdsAsInt();
+        if (empty($taskIds)) {
+            return;
+        }
+
+        $this->rememberTaskOrderForUndo();
+        $ordered = Task::query()
+            ->whereIn('id', $taskIds)
+            ->orderBy('task_name')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->all();
+
+        $this->selectedTaskIds = $this->applyExplicitOrder($this->selectedTaskIds, $ordered);
+    }
+
+    public function sortSelectedTasksByTargetDate(): void
+    {
+        $taskIds = $this->getSelectedTaskIdsAsInt();
+        if (empty($taskIds)) {
+            return;
+        }
+
+        $this->rememberTaskOrderForUndo();
+        $ordered = Task::query()
+            ->whereIn('id', $taskIds)
+            ->orderByRaw('tanggal IS NULL')
+            ->orderBy('tanggal')
+            ->orderBy('task_name')
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->all();
+
+        $this->selectedTaskIds = $this->applyExplicitOrder($this->selectedTaskIds, $ordered);
+    }
+
+    public function undoTaskOrder(): void
+    {
+        if (empty($this->taskOrderUndo)) {
+            return;
+        }
+
+        $this->selectedTaskIds = $this->applyExplicitOrder($this->selectedTaskIds, $this->taskOrderUndo);
+        $this->taskOrderUndo = [];
+    }
+
+    public function removeSelectedTask(string|int $taskId): void
+    {
+        $this->rememberTaskOrderForUndo();
+        $taskId = (string) $taskId;
+
+        $this->selectedTaskIds = array_values(array_filter(
+            $this->selectedTaskIds,
+            fn($id) => (string) $id !== $taskId
+        ));
+
+        $remainingTaskIds = $this->getSelectedTaskIdsAsInt();
+        if (empty($remainingTaskIds)) {
+            $this->selectedIssueIds = [];
+            return;
+        }
+
+        $allowedIssueIds = Issue::query()
+            ->whereIn('task_id', $remainingTaskIds)
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->all();
+
+        $allowedMap = array_fill_keys($allowedIssueIds, true);
+        $this->selectedIssueIds = array_values(array_filter(
+            $this->selectedIssueIds,
+            fn($id) => isset($allowedMap[(string) $id])
+        ));
+        $this->syncTaskOrderBaseline();
+        $this->syncIssueOrderBaseline();
+        $this->ensureActiveStepIsReachable();
     }
     // endregion
 
@@ -593,10 +845,19 @@ class TaskReportBuilder extends Page implements HasForms
         }
     }
 
+    public function goToIssuePickerPage(): void
+    {
+        $requested = (int) trim($this->issueJumpPage);
+        $lastPage = $this->resolveIssuePickerLastPage();
+        $this->issuePickerPage = max(1, min($requested, $lastPage));
+        $this->issueJumpPage = (string) $this->issuePickerPage;
+    }
+
     public function selectCurrentPageIssues(): void
     {
         $ids = $this->getIssuePickerData()['items']->pluck('id')->map(fn($id) => (string) $id)->all();
         $this->selectedIssueIds = array_values(array_unique([...$this->selectedIssueIds, ...$ids]));
+        $this->updatedSelectedIssueIds();
     }
 
     public function selectFilteredIssues(): void
@@ -608,6 +869,7 @@ class TaskReportBuilder extends Page implements HasForms
             ->all();
 
         $this->selectedIssueIds = array_values(array_unique([...$this->selectedIssueIds, ...$ids]));
+        $this->updatedSelectedIssueIds();
     }
 
     public function unselectFilteredIssues(): void
@@ -624,11 +886,88 @@ class TaskReportBuilder extends Page implements HasForms
             $this->selectedIssueIds,
             fn($id) => !isset($filteredMap[(string) $id])
         ));
+        $this->updatedSelectedIssueIds();
     }
 
     public function clearSelectedIssues(): void
     {
         $this->selectedIssueIds = [];
+        $this->updatedSelectedIssueIds();
+    }
+
+    /** @param array<int, string|int> $orderedIds */
+    public function reorderSelectedIssues(array $orderedIds): void
+    {
+        $this->rememberIssueOrderForUndo();
+        $this->selectedIssueIds = $this->applyExplicitOrder($this->selectedIssueIds, $orderedIds);
+    }
+
+    public function moveIssueSelectionUp(string|int $issueId): void
+    {
+        $this->rememberIssueOrderForUndo();
+        $this->selectedIssueIds = $this->moveIdPosition($this->selectedIssueIds, (string) $issueId, -1);
+    }
+
+    public function moveIssueSelectionDown(string|int $issueId): void
+    {
+        $this->rememberIssueOrderForUndo();
+        $this->selectedIssueIds = $this->moveIdPosition($this->selectedIssueIds, (string) $issueId, 1);
+    }
+
+    public function resetIssueOrder(): void
+    {
+        if (empty($this->selectedIssueIds)) {
+            return;
+        }
+
+        $this->rememberIssueOrderForUndo();
+        $this->selectedIssueIds = $this->applyExplicitOrder($this->selectedIssueIds, $this->issueOrderBaseline);
+    }
+
+    public function sortSelectedIssuesByName(): void
+    {
+        $issueIds = collect($this->selectedIssueIds)
+            ->map(fn($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($issueIds)) {
+            return;
+        }
+
+        $this->rememberIssueOrderForUndo();
+        $ordered = Issue::query()
+            ->whereIn('id', $issueIds)
+            ->orderBy('issue_name')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->all();
+
+        $this->selectedIssueIds = $this->applyExplicitOrder($this->selectedIssueIds, $ordered);
+    }
+
+    public function undoIssueOrder(): void
+    {
+        if (empty($this->issueOrderUndo)) {
+            return;
+        }
+
+        $this->selectedIssueIds = $this->applyExplicitOrder($this->selectedIssueIds, $this->issueOrderUndo);
+        $this->issueOrderUndo = [];
+    }
+
+    public function removeSelectedIssue(string|int $issueId): void
+    {
+        $this->rememberIssueOrderForUndo();
+        $issueId = (string) $issueId;
+
+        $this->selectedIssueIds = array_values(array_filter(
+            $this->selectedIssueIds,
+            fn($id) => (string) $id !== $issueId
+        ));
+        $this->updatedSelectedIssueIds();
     }
     // endregion
 
@@ -914,6 +1253,246 @@ class TaskReportBuilder extends Page implements HasForms
             ->all();
     }
 
+    protected function canAccessBuilderStep(int $step): bool
+    {
+        return match ($step) {
+            1, 2 => true,
+            3, 4 => count($this->selectedTaskIds) > 0,
+            default => false,
+        };
+    }
+
+    protected function ensureActiveStepIsReachable(): void
+    {
+        if (!$this->canAccessBuilderStep($this->activeBuilderStep)) {
+            $this->activeBuilderStep = count($this->selectedTaskIds) > 0 ? 2 : 1;
+        }
+    }
+
+    protected function getBuilderStepStates(array $warnings = []): array
+    {
+        $hasTask = count($this->selectedTaskIds) > 0;
+        $hasIssue = count($this->selectedIssueIds) > 0;
+        $hasBlockingWarning = collect($warnings)->contains(fn(string $warning) => str_contains($warning, 'wajib'));
+        $isStepOneComplete = !$hasBlockingWarning;
+
+        return [
+            1 => [
+                'title' => 'Informasi Rapat',
+                'description' => 'Isi metadata dokumen dan informasi rapat.',
+                'enabled' => true,
+                'complete' => $isStepOneComplete,
+            ],
+            2 => [
+                'title' => 'Pilih Task',
+                'description' => 'Cari, filter, dan pilih task sumber laporan.',
+                'enabled' => true,
+                'complete' => $hasTask,
+            ],
+            3 => [
+                'title' => 'Pilih Issue',
+                'description' => 'Pilih issue relevan dari task terpilih.',
+                'enabled' => $hasTask,
+                'complete' => $hasTask && $hasIssue,
+            ],
+            4 => [
+                'title' => 'Urutan & Final Check',
+                'description' => 'Atur urutan akhir, cek preview, lalu render PDF.',
+                'enabled' => $hasTask,
+                'complete' => $hasTask && !$this->previewDirty,
+            ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $reportData
+     * @return array<int, string>
+     */
+    protected function buildSummaryWarnings(array $reportData): array
+    {
+        $warnings = [];
+
+        if (blank((string) data_get($this->formData, 'title_id', ''))) {
+            $warnings[] = 'Judul (ID) wajib diisi.';
+        }
+
+        if (blank((string) data_get($this->formData, 'title_en', ''))) {
+            $warnings[] = 'Judul (EN) wajib diisi.';
+        }
+
+        if (blank((string) data_get($this->formData, 'meeting_day', ''))) {
+            $warnings[] = 'Hari rapat belum diisi.';
+        }
+
+        if (blank((string) data_get($this->formData, 'meeting_time', ''))) {
+            $warnings[] = 'Waktu rapat belum diisi.';
+        }
+
+        if (count($this->selectedTaskIds) === 0) {
+            $warnings[] = 'Belum ada task dipilih.';
+        }
+
+        if (count($this->selectedTaskIds) > 0 && count($this->selectedIssueIds) === 0) {
+            $warnings[] = 'Tidak ada issue terpilih (opsional).';
+        }
+
+        if ((int) ($reportData['previewTotalPages'] ?? 1) > 3) {
+            $warnings[] = 'Estimasi halaman cukup panjang, pastikan urutan sudah optimal.';
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function buildTaskFilterChips(): array
+    {
+        $chips = [];
+
+        if (trim($this->taskSearch) !== '') {
+            $chips[] = 'Cari: "' . trim($this->taskSearch) . '"';
+        }
+
+        if ($this->taskFilterStaffId) {
+            $name = Staff::query()->whereKey($this->taskFilterStaffId)->value('name');
+            $chips[] = 'PIC: ' . ($name ?: $this->taskFilterStaffId);
+        }
+
+        if ($this->taskFilterProjectId) {
+            $name = Project::query()->whereKey($this->taskFilterProjectId)->value('project_name');
+            $chips[] = 'Project: ' . ($name ?: $this->taskFilterProjectId);
+        }
+
+        if ($this->taskFilterStatus !== '') {
+            $chips[] = 'Status: ' . ucfirst(str_replace('_', ' ', $this->taskFilterStatus));
+        }
+
+        if ($this->showOnlySelectedTasks) {
+            $chips[] = 'Selected only';
+        }
+
+        return $chips;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function buildIssueFilterChips(): array
+    {
+        $chips = [];
+
+        if (trim($this->issueSearch) !== '') {
+            $chips[] = 'Cari: "' . trim($this->issueSearch) . '"';
+        }
+
+        if ($this->issueFilterStatus !== '') {
+            $chips[] = 'Status: ' . ucfirst(str_replace('_', ' ', $this->issueFilterStatus));
+        }
+
+        if ($this->issueFilterPriority !== '') {
+            $chips[] = 'Priority: ' . ucfirst(str_replace('_', ' ', $this->issueFilterPriority));
+        }
+
+        if ($this->issueFilterStaffId) {
+            $name = Staff::query()->whereKey($this->issueFilterStaffId)->value('name');
+            $chips[] = 'PIC: ' . ($name ?: $this->issueFilterStaffId);
+        }
+
+        if ($this->showOnlySelectedIssues) {
+            $chips[] = 'Selected only';
+        }
+
+        return $chips;
+    }
+
+    protected function syncTaskOrderBaseline(): void
+    {
+        $selected = collect($this->selectedTaskIds)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $id !== '')
+            ->unique()
+            ->values();
+
+        $baseline = collect($this->taskOrderBaseline)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $selected->contains($id))
+            ->values();
+
+        $newIds = $selected
+            ->reject(fn($id) => $baseline->contains($id))
+            ->values();
+
+        $this->taskOrderBaseline = $baseline
+            ->concat($newIds)
+            ->values()
+            ->all();
+    }
+
+    protected function syncIssueOrderBaseline(): void
+    {
+        $selected = collect($this->selectedIssueIds)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $id !== '')
+            ->unique()
+            ->values();
+
+        $baseline = collect($this->issueOrderBaseline)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $selected->contains($id))
+            ->values();
+
+        $newIds = $selected
+            ->reject(fn($id) => $baseline->contains($id))
+            ->values();
+
+        $this->issueOrderBaseline = $baseline
+            ->concat($newIds)
+            ->values()
+            ->all();
+    }
+
+    protected function rememberTaskOrderForUndo(): void
+    {
+        $this->taskOrderUndo = collect($this->selectedTaskIds)
+            ->map(fn($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    protected function rememberIssueOrderForUndo(): void
+    {
+        $this->issueOrderUndo = collect($this->selectedIssueIds)
+            ->map(fn($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    protected function currentPreviewFingerprint(): string
+    {
+        $payload = [
+            'formData' => $this->formData,
+            'selectedTaskIds' => $this->selectedTaskIds,
+            'selectedIssueIds' => $this->selectedIssueIds,
+        ];
+
+        return sha1((string) json_encode($payload));
+    }
+
+    protected function markReportRendered(): void
+    {
+        $now = $this->uiTimestamp();
+        $this->previewSyncedFingerprint = $this->currentPreviewFingerprint();
+        $this->previewDirty = false;
+        $this->lastPreviewAt = $now;
+        $this->lastRenderedAt = $now;
+    }
+
+    protected function uiTimestamp(): string
+    {
+        return now()->timezone(config('app.timezone'))->format('d M Y H:i');
+    }
+
     protected function formatMeetingDay(mixed $value): string
     {
         return $this->formatIndonesianDate($value, withDayName: true);
@@ -1122,10 +1701,16 @@ class TaskReportBuilder extends Page implements HasForms
             ->values()
             ->all();
 
+        $issueOrderMap = collect($selectedIssueIds)
+            ->values()
+            ->flip()
+            ->all();
+
         $issuesByTask = Issue::query()
             ->with(['staff:id,name'])
             ->whereIn('id', empty($selectedIssueIds) ? [-1] : $selectedIssueIds)
             ->get(['id', 'task_id', 'staff_id', 'issue_name', 'description', 'status'])
+            ->sortBy(fn(Issue $issue) => $issueOrderMap[(int) $issue->id] ?? PHP_INT_MAX)
             ->groupBy('task_id');
 
         $tasks = Task::query()
@@ -1325,6 +1910,108 @@ class TaskReportBuilder extends Page implements HasForms
             ->map(fn($id) => (int) $id)
             ->filter()
             ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function getSelectedTasksOrdered(): Collection
+    {
+        $taskIds = $this->getSelectedTaskIdsAsInt();
+        if (empty($taskIds)) {
+            return collect();
+        }
+
+        $orderMap = collect($taskIds)->values()->flip()->all();
+
+        return Task::query()
+            ->with(['staff', 'project'])
+            ->whereIn('id', $taskIds)
+            ->get()
+            ->sortBy(fn(Task $task) => $orderMap[(int) $task->id] ?? PHP_INT_MAX)
+            ->values();
+    }
+
+    protected function getSelectedIssuesOrdered(): Collection
+    {
+        $issueIds = collect($this->selectedIssueIds)
+            ->map(fn($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($issueIds)) {
+            return collect();
+        }
+
+        $orderMap = collect($issueIds)->values()->flip()->all();
+
+        return Issue::query()
+            ->with(['task', 'staff'])
+            ->whereIn('id', $issueIds)
+            ->get()
+            ->sortBy(fn(Issue $issue) => $orderMap[(int) $issue->id] ?? PHP_INT_MAX)
+            ->values();
+    }
+
+    /**
+     * @param  array<int, string|int>  $ids
+     * @return array<int, string>
+     */
+    protected function moveIdPosition(array $ids, string $targetId, int $direction): array
+    {
+        $normalized = collect($ids)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $id !== '')
+            ->values()
+            ->all();
+
+        $index = array_search($targetId, $normalized, true);
+        if ($index === false) {
+            return $normalized;
+        }
+
+        $nextIndex = $index + ($direction < 0 ? -1 : 1);
+        if ($nextIndex < 0 || $nextIndex >= count($normalized)) {
+            return $normalized;
+        }
+
+        [$normalized[$index], $normalized[$nextIndex]] = [$normalized[$nextIndex], $normalized[$index]];
+
+        return array_values($normalized);
+    }
+
+    /**
+     * @param  array<int, string|int>  $currentIds
+     * @param  array<int, string|int>  $orderedIds
+     * @return array<int, string>
+     */
+    protected function applyExplicitOrder(array $currentIds, array $orderedIds): array
+    {
+        $current = collect($currentIds)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $id !== '')
+            ->unique()
+            ->values();
+
+        if ($current->isEmpty()) {
+            return [];
+        }
+
+        $allowed = array_fill_keys($current->all(), true);
+
+        $ordered = collect($orderedIds)
+            ->map(fn($id) => (string) $id)
+            ->filter(fn($id) => $id !== '' && isset($allowed[$id]))
+            ->unique()
+            ->values();
+
+        $missing = $current
+            ->reject(fn($id) => $ordered->contains($id))
+            ->values();
+
+        return $ordered
+            ->concat($missing)
             ->values()
             ->all();
     }
