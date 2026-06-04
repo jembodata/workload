@@ -3,10 +3,37 @@
 <head>
     <meta charset="utf-8">
     <title>Minutes of Meeting</title>
+    @php
+        $myriadRegular = str_replace('\\', '/', public_path('fonts/myriad-pro/MYRIADPRO-REGULAR.OTF'));
+        $myriadSemiBold = str_replace('\\', '/', public_path('fonts/myriad-pro/MYRIADPRO-SEMIBOLD.OTF'));
+        $myriadBold = str_replace('\\', '/', public_path('fonts/myriad-pro/MYRIADPRO-BOLD.OTF'));
+    @endphp
     <style>
         @page { size: A4 {{ $orientation ?? 'portrait' }}; margin: 12mm; }
+
+        @font-face {
+            font-family: 'Myriad Pro';
+            font-style: normal;
+            font-weight: 400;
+            src: url('{{ $myriadRegular }}') format('opentype');
+        }
+
+        @font-face {
+            font-family: 'Myriad Pro';
+            font-style: normal;
+            font-weight: 600;
+            src: url('{{ $myriadSemiBold }}') format('opentype');
+        }
+
+        @font-face {
+            font-family: 'Myriad Pro';
+            font-style: normal;
+            font-weight: 700;
+            src: url('{{ $myriadBold }}') format('opentype');
+        }
+
         .report-doc {
-            font-family: Arial, Helvetica, sans-serif;
+            font-family: 'Myriad Pro';
             font-size: 11px;
             line-height: 1.35;
             color: #000;
@@ -75,16 +102,12 @@
             border: 0.75px solid #000;
             padding: 4px;
             vertical-align: top;
+            word-break: break-word;
+            overflow-wrap: break-word;
         }
         .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
         .report-doc .data-table-section th { text-align: center; font-size: 10px; font-weight: 700; }
-        .report-doc .col-no { width: 4%; }
-        .report-doc .col-item { width: 14%; }
-        .report-doc .col-pembahasan { width: 16%; }
-        .report-doc .col-rencana { width: 36%; }
-        .report-doc .col-target { width: 10%; }
-        .report-doc .col-pic { width: 10%; }
-        .report-doc .col-evaluasi { width: 10%; }
+        /* Column width is controlled dynamically via <colgroup> from form input. */
         .report-doc .eval-stack {
             display: block;
         }

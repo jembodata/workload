@@ -27,11 +27,18 @@ class Issue extends Model
 
     public function task(): BelongsTo
     {
-        return $this->belongsTo(Task::class);
+        return $this->belongsTo(Task::class, 'task_id');
     }
 
     public function staff(): BelongsTo
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Staff::class, 'staff_id');
+    }
+
+    public function actionPlans(): HasMany
+    {
+        return $this->hasMany(IssueActionPlan::class, 'issue_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 }

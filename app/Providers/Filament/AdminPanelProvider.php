@@ -4,15 +4,14 @@ namespace App\Providers\Filament;
 
 use App\Filament\Resources\RoleResource;
 use App\Filament\Resources\StaffResource;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
-use Filament\Support\Assets\Css;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Hasnayeen\Themes\ThemesPlugin;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -42,23 +41,20 @@ class AdminPanelProvider extends PanelProvider
                 StaffResource::class,
             ])
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#5347CE'),
+                'info' => Color::hex('#4896FE'),
+                'success' => Color::hex('#16C8C7'),
             ])
             ->brandLogo(asset('images/logo.png'))
             ->brandLogoHeight('3rem')
             ->topNavigation()
-            ->plugin(
-                ThemesPlugin::make()
-                ->registerTheme(
-                    [
-                        \Hasnayeen\Themes\Themes\Sunset::class,
-                    ],
-                    override: true,
-                )
-            )
-            ->assets([
-                Css::make('custom-scrollbar-fix', resource_path('css\filament\admin\theme.css')),
-            ])
+            ->font('Figtree')
+            // ->font(
+            //     'Myriad Pro',
+            //     url: asset('fonts/myriad-pro/fonts.css'),
+            //     provider: LocalFontProvider::class,
+            // )
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
@@ -75,7 +71,6 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class,
             ])
             ->authMiddleware([
                 Authenticate::class,

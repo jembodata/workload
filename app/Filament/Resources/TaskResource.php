@@ -3,17 +3,18 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TaskResource\Pages;
-// use Guava\FilamentModalRelationManagers\Actions\RelationManagerAction;
 use App\Filament\Resources\TaskResource\RelationManagers\IssuesRelationManager;
 use App\Models\Task;
 use App\Models\Issue;
 use Carbon\CarbonPeriod;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn\TextColumnSize;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Notifications\Notification;
 use Guava\FilamentModalRelationManagers\Actions\Table\RelationManagerAction;
@@ -26,7 +27,7 @@ class TaskResource extends Resource
 {
     protected static ?string $model = Task::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    protected static ?string $navigationIcon = 'heroicon-s-clipboard-document-list';
     public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
     {
         $query = parent::getEloquentQuery();
@@ -83,10 +84,10 @@ class TaskResource extends Resource
                     ->label('Item & Task')
                     ->weight('bold')
                     ->width('380px')
-                    ->description(function (Model $record) {
-                        $text = $record->output ?? '-';
-                        return Str::limit($text, 50);
-                    })
+                    // ->description(function (Model $record) {
+                    //     $text = $record->output ?? '-';
+                    //     return Str::limit($text, 50);
+                    // })
                     ->searchable()
                     ->wrap()
                     ->tooltip(fn(Model $record): string => $record->output ?? 'Klik untuk edit')
@@ -290,6 +291,10 @@ class TaskResource extends Resource
                 Tables\Columns\TextColumn::make('total_overdue')
                     ->label(new HtmlString('Total <br/> Overdue'))
                     ->badge()
+                    ->alignCenter()
+                    ->weight('semibold')
+                    ->size(TextColumnSize::Medium)
+                    ->formatStateUsing(fn($state) => (string) ((int) $state))
                     ->color(fn($state) => $state > 0 ? 'danger' : 'zinc')
                     ->toggleable(isToggledHiddenByDefault: false),
 
@@ -297,15 +302,19 @@ class TaskResource extends Resource
                     ->counts('issues')
                     ->label(new HtmlString('Total <br/> Issues'))
                     ->badge()
-                    ->color(fn($state) => $state > 0 ? 'warning' : 'gray')
+                    ->alignCenter()
+                    ->weight('semibold')
+                    ->size(TextColumnSize::Medium)
+                    ->formatStateUsing(fn($state) => (string) ((int) $state))
+                    ->color(fn($state) => $state > 0 ? 'info' : 'gray')
                     ->tooltip('Klik untuk lihat issues')
                     ->extraAttributes(['style' => 'cursor: pointer;'], true)
                     ->action(
                         RelationManagerAction::make('issues-relation-manager-column')
                             ->label('View Issues')
-                            ->icon('heroicon-m-document-magnifying-glass')
                             ->color('info')
                             ->slideOver()
+                            ->modalWidth(MaxWidth::SixExtraLarge)
                             // ->closeModalByClickingAway(false)
                             ->relationManager(IssuesRelationManager::make())
                     )
@@ -356,7 +365,7 @@ class TaskResource extends Resource
 
             ->headerActions([
                 Tables\Actions\Action::make('legend')
-                    ->label('Petunjuk Warna')
+                    ->label('Status')
                     ->view('tables.legend'),
             ])
 
@@ -406,6 +415,8 @@ class TaskResource extends Resource
                                 ->success()
                                 ->send();
                         }),
+
+
 
                 ])
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -494,6 +505,11 @@ class TaskResource extends Resource
 
             Forms\Components\Fieldset::make('Task')
                 ->schema([
+                    // Checkbox Long Term Project di bawah Task Name
+                    Forms\Components\Checkbox::make('is_long_term')
+                        ->label('Long Term Project')
+                        ->reactive(),
+
                     Forms\Components\Select::make('project_id')
                         ->relationship('project', 'project_name')
                         ->label('Project')
@@ -614,15 +630,6 @@ class TaskResource extends Resource
                                 ->modalWidth(\Filament\Support\Enums\MaxWidth::Large)
                                 ->modalHeading('Buat Proyek Baru')
                         ),
-                    Forms\Components\TextInput::make('task_name')
-                        ->label('Item')
-                        ->required()
-                        ->maxLength(100),
-
-                    // Checkbox Long Term Project di bawah Task Name
-                    Forms\Components\Checkbox::make('is_long_term')
-                        ->label('Long Term Project')
-                        ->reactive(),
 
                     Forms\Components\Select::make('staff_id')
                         ->relationship('staff', 'name')
@@ -654,13 +661,19 @@ class TaskResource extends Resource
                         ])
                         ->createOptionAction(fn(\Filament\Forms\Components\Actions\Action $action) => $action->slideOver()->modalWidth(MaxWidth::Medium)),
 
-                    Forms\Components\Textarea::make('input')
-                        ->label('Project')
-                        ->maxLength(255),
+                    Forms\Components\Textarea::make('task_name')
+                        ->label('Nama Task')
+                        ->required()
+                        ->maxLength(100),
 
-                    Forms\Components\Textarea::make('output')
-                        ->label('Task')
-                        ->maxLength(255),
+                    // Forms\Components\Textarea::make('input')
+                    //     ->label('Project')
+                    //     ->disabled()
+                    //     ->maxLength(255),
+
+                    // Forms\Components\Textarea::make('output')
+                    //     ->label('Task')
+                    //     ->maxLength(255),
 
                     // Jika bukan long term â†’ tampilkan tanggal & estimasi jam
                     Forms\Components\DatePicker::make('tanggal')

@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Pages\TaskReportBuilder;
 use App\Filament\Resources\ReportHistoryResource\Pages;
 use App\Models\ReportHistory;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -38,6 +40,11 @@ class ReportHistoryResource extends Resource
                 Tables\Columns\TextColumn::make('revision')
                     ->badge()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('version_no')
+                    ->label('Version')
+                    ->badge()
+                    ->formatStateUsing(fn($state): string => 'V' . max(1, (int) $state))
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('orientation')
                     ->badge()
                     ->formatStateUsing(fn(string $state): string => ucfirst($state)),
@@ -56,6 +63,39 @@ class ReportHistoryResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('versions')
+                    ->label('Versions')
+                    ->icon('heroicon-o-clock')
+                    ->color('gray')
+                    ->modalHeading('Riwayat Versi')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalWidth('4xl')
+                    ->modalContent(function (ReportHistory $record) {
+                        $rootId = (int) ($record->source_history_id ?: $record->id);
+
+                        $versions = ReportHistory::query()
+                            ->with('user:id,name')
+                            ->where(function (Builder $query) use ($rootId): void {
+                                $query
+                                    ->where('id', $rootId)
+                                    ->orWhere('source_history_id', $rootId);
+                            })
+                            ->orderByDesc('version_no')
+                            ->orderByDesc('printed_at')
+                            ->get();
+
+                        return view('filament.resources.report-history.version-timeline', [
+                            'versions' => $versions,
+                            'ownerId' => (int) auth()->id(),
+                        ]);
+                    }),
+                // Tables\Actions\Action::make('editHistory')
+                //     ->label('Edit')
+                //     ->icon('heroicon-o-pencil-square')
+                //     ->color('warning')
+                //     ->visible(fn(ReportHistory $record): bool => (int) $record->printed_by === (int) auth()->id())
+                //     ->url(fn(ReportHistory $record): string => TaskReportBuilder::getUrl(['history_id' => $record->id])),
                 Tables\Actions\Action::make('viewPdf')
                     ->label('View PDF')
                     ->icon('heroicon-o-document')
@@ -124,6 +164,19 @@ class ReportHistoryResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $table = (new ReportHistory())->getTable();
+
+        $latestRowPerChainSubquery = ReportHistory::query()
+            ->from("{$table} as rv")
+            ->selectRaw('MAX(rv.id) as id')
+            ->groupByRaw('COALESCE(rv.source_history_id, rv.id)');
+
+        return parent::getEloquentQuery()
+            ->whereIn("{$table}.id", $latestRowPerChainSubquery);
     }
 
     public static function getPages(): array

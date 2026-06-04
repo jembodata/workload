@@ -59,16 +59,79 @@
         </table>
     @endif
 
-    <table class="data-table-section">
+    @php
+        $columnWidths = $columnWidths ?? [
+            'no' => 4,
+            'project_task' => 14,
+            'percent' => 16,
+            'issue' => 36,
+            'action_plan' => 10,
+            'pic' => 10,
+            'evaluasi' => 10,
+        ];
+
+        $widthNo = number_format((float) ($columnWidths['no'] ?? 4), 2, '.', '');
+        $widthProjectTask = number_format((float) ($columnWidths['project_task'] ?? 14), 2, '.', '');
+        $widthPercent = number_format((float) ($columnWidths['percent'] ?? 16), 2, '.', '');
+        $widthIssue = number_format((float) ($columnWidths['issue'] ?? 36), 2, '.', '');
+        $widthActionPlan = number_format((float) ($columnWidths['action_plan'] ?? 10), 2, '.', '');
+        $widthPic = number_format((float) ($columnWidths['pic'] ?? 10), 2, '.', '');
+        $widthEvaluasi = number_format((float) ($columnWidths['evaluasi'] ?? 10), 2, '.', '');
+    @endphp
+
+    @php
+        $isInteractivePreview = (bool) ($isInteractivePreview ?? false);
+    @endphp
+
+    <table class="data-table-section" data-resizable-report-table="{{ $isInteractivePreview ? '1' : '0' }}">
+        <colgroup>
+            <col data-col-key="no" style="width: {{ $widthNo }}%;">
+            <col data-col-key="project_task" style="width: {{ $widthProjectTask }}%;">
+            <col data-col-key="percent" style="width: {{ $widthPercent }}%;">
+            <col data-col-key="issue" style="width: {{ $widthIssue }}%;">
+            <col data-col-key="action_plan" style="width: {{ $widthActionPlan }}%;">
+            <col data-col-key="pic" style="width: {{ $widthPic }}%;">
+            <col data-col-key="evaluasi" style="width: {{ $widthEvaluasi }}%;">
+        </colgroup>
         <thead>
             <tr>
-                <th class="col-no">No</th>
-                <th class="col-item">Item</th>
-                <th class="col-pembahasan">Pembahasan<br>(Input)</th>
-                <th class="col-rencana">Rencana Tindakan (Output)</th>
-                <th class="col-target">Target</th>
-                <th class="col-pic">PIC</th>
-                <th class="col-evaluasi">Evaluasi<br>Efektivitas</th>
+                <th class="col-no" data-col-key="no" style="width: {{ $widthNo }}%;">
+                    No
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="no" data-resize-right="project_task" role="separator" aria-label="Resize kolom No"></span>
+                    @endif
+                </th>
+                <th class="col-item" data-col-key="project_task" style="width: {{ $widthProjectTask }}%;">
+                    Project &amp; Task
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="project_task" data-resize-right="percent" role="separator" aria-label="Resize kolom Project & Task"></span>
+                    @endif
+                </th>
+                <th class="col-pembahasan" data-col-key="percent" style="width: {{ $widthPercent }}%;">
+                    %
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="percent" data-resize-right="issue" role="separator" aria-label="Resize kolom %"></span>
+                    @endif
+                </th>
+                <th class="col-rencana" data-col-key="issue" style="width: {{ $widthIssue }}%;">
+                    Issue
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="issue" data-resize-right="action_plan" role="separator" aria-label="Resize kolom Issue"></span>
+                    @endif
+                </th>
+                <th class="col-target" data-col-key="action_plan" style="width: {{ $widthActionPlan }}%;">
+                    Action Plan
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="action_plan" data-resize-right="pic" role="separator" aria-label="Resize kolom Action Plan"></span>
+                    @endif
+                </th>
+                <th class="col-pic" data-col-key="pic" style="width: {{ $widthPic }}%;">
+                    PIC
+                    @if ($isInteractivePreview)
+                        <span class="preview-col-resize-handle" data-resize-left="pic" data-resize-right="evaluasi" role="separator" aria-label="Resize kolom PIC"></span>
+                    @endif
+                </th>
+                <th class="col-evaluasi" data-col-key="evaluasi" style="width: {{ $widthEvaluasi }}%;">Evaluasi<br>Efektivitas</th>
             </tr>
         </thead>
         <tbody>
@@ -88,45 +151,79 @@
                         'postponed' => 'eval-postponed',
                         default => 'eval-tbd',
                     };
-                    $issueEntries = collect($row['issue_entries'] ?? [])->filter(fn($item) => is_array($item));
-                    $rowSpan = max(1, $issueEntries->count() + 1);
+                    $issueEntries = collect($row['issue_entries'] ?? [])->filter(fn($item) => is_array($item))->values();
+                    $hasRealIssues = $issueEntries->isNotEmpty();
+                    if ($issueEntries->isEmpty()) {
+                        $issueEntries = collect([[
+                            'issue_id' => 0,
+                            'issue' => '-',
+                            'action_plan' => '-',
+                            'status_key' => '',
+                            'status_label' => '',
+                            'pic' => '-',
+                            'has_action_plan' => false,
+                        ]]);
+                    }
+                    $issueGroups = $issueEntries
+                        ->groupBy(fn(array $item) => ((int) ($item['issue_id'] ?? 0)) > 0
+                            ? 'id:' . (int) ($item['issue_id'] ?? 0)
+                            : 'text:' . (string) ($item['issue'] ?? '-'))
+                        ->values();
+                    $rowSpan = max(1, (int) $issueGroups->sum(fn($group) => max(1, collect($group)->count())));
+                    $taskRenderIndex = 0;
                 @endphp
-                <tr class="data-row">
-                    <td class="col-no center" rowspan="{{ $rowSpan }}">{{ $row['no'] }}</td>
-                    <td class="col-item center" rowspan="{{ $rowSpan }}">{{ $row['item'] }}</td>
-                    <td class="col-pembahasan" rowspan="{{ $rowSpan }}">{!! nl2br(e($row['input'])) !!}</td>
-                    <td class="col-rencana">{!! nl2br(e($row['output'])) !!}</td>
-                    <td class="col-target center">{{ $row['target'] }}</td>
-                    <td class="col-pic center">{{ $row['pic'] }}</td>
-                    <td class="col-evaluasi">
-                        <div class="eval-stack">
-                            <div class="eval-pill {{ $taskEvaluasiClass }}">{{ $taskEvaluasiText }}</div>
-                        </div>
-                    </td>
-                </tr>
-                @foreach ($issueEntries as $issueEntry)
+                @foreach ($issueGroups as $issueGroup)
                     @php
-                        $issueEntryKey = strtolower((string) ($issueEntry['status_key'] ?? 'tbd'));
-                        $issueEntryLabel = (string) ($issueEntry['status_label'] ?? 'TBD');
-                        $issueEntryClass = match ($issueEntryKey) {
-                            'closed' => 'eval-closed',
-                            'progress' => 'eval-progress',
-                            'opened', 'open' => 'eval-open',
-                            'overdue' => 'eval-overdue',
-                            'postponed' => 'eval-postponed',
-                            default => 'eval-tbd',
-                        };
+                        $issueGroupRows = collect($issueGroup)->values();
+                        $issueGroupSpan = max(1, $issueGroupRows->count());
                     @endphp
-                    <tr class="data-row">
-                        <td class="col-rencana">- {!! nl2br(e((string) ($issueEntry['description'] ?? ''))) !!}</td>
-                        <td class="col-target center"></td>
-                        <td class="col-pic center">{{ (string) ($issueEntry['pic'] ?? '-') }}</td>
-                        <td class="col-evaluasi">
-                            <div class="eval-stack">
-                                <div class="eval-pill {{ $issueEntryClass }}">{{ $issueEntryLabel }}</div>
-                            </div>
-                        </td>
-                    </tr>
+                    @foreach ($issueGroupRows as $entryIndex => $issueEntry)
+                        @php
+                            $issueEntryKey = strtolower((string) ($issueEntry['status_key'] ?? 'tbd'));
+                            $issueEntryLabel = (string) ($issueEntry['status_label'] ?? 'TBD');
+                            $issueEntryClass = match ($issueEntryKey) {
+                                'closed' => 'eval-closed',
+                                'progress' => 'eval-progress',
+                                'opened', 'open' => 'eval-open',
+                                'overdue' => 'eval-overdue',
+                                'postponed' => 'eval-postponed',
+                                default => 'eval-tbd',
+                            };
+                            $projectName = trim((string) ($row['project_name'] ?? '-'));
+                            $taskName = trim((string) ($row['task_name'] ?? '-'));
+                        @endphp
+                        <tr class="data-row">
+                            @if ($taskRenderIndex === 0)
+                                <td class="col-no center" style="width: {{ $widthNo }}%;" rowspan="{{ $rowSpan }}">{{ $row['no'] }}</td>
+                                <td class="col-item" style="width: {{ $widthProjectTask }}%;" rowspan="{{ $rowSpan }}">
+                                    @if ($projectName !== '' && $projectName !== '-')
+                                        <div><strong>{{ $projectName }}</strong></div>
+                                    @endif
+                                    <div>{{ $taskName !== '' ? $taskName : '-' }}</div>
+                                </td>
+                                <td class="col-pembahasan center" style="width: {{ $widthPercent }}%;" rowspan="{{ $rowSpan }}">{{ (string) ($row['percent'] ?? '-') }}</td>
+                            @endif
+
+                            @if ($entryIndex === 0)
+                                <td class="col-rencana" style="width: {{ $widthIssue }}%;" rowspan="{{ $issueGroupSpan }}">{!! nl2br(e((string) ($issueEntry['issue'] ?? '-'))) !!}</td>
+                            @endif
+                            <td class="col-target" style="width: {{ $widthActionPlan }}%;">{!! nl2br(e((string) ($issueEntry['action_plan'] ?? '-'))) !!}</td>
+                            <td class="col-pic center" style="width: {{ $widthPic }}%;">{{ (string) ($issueEntry['pic'] ?? '-') }}</td>
+                            <td class="col-evaluasi" style="width: {{ $widthEvaluasi }}%;">
+                                <div class="eval-stack">
+                                    @if (!$hasRealIssues && $taskRenderIndex === 0)
+                                        <div class="eval-pill {{ $taskEvaluasiClass }}">{{ $taskEvaluasiText }}</div>
+                                    @endif
+                                    @if ($hasRealIssues && filled(trim($issueEntryLabel)) && trim($issueEntryLabel) !== '-')
+                                        <div class="eval-pill {{ $issueEntryClass }}">{{ $issueEntryLabel }}</div>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
+                        @php
+                            $taskRenderIndex++;
+                        @endphp
+                    @endforeach
                 @endforeach
             @empty
                 <tr class="data-row">

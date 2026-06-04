@@ -5,14 +5,11 @@ namespace App\Filament\Resources\TaskResource\Pages;
 use App\Filament\Exports\TasksExporter;
 use App\Filament\Pages\TaskReportBuilder;
 use App\Filament\Resources\TaskResource;
-use App\Imports\ImportTask;
 use Filament\Actions;
 use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Enums\MaxWidth;
-use Filament\Resources\Components\Tab;
 use Filament\Forms\Components\Actions\Action;
-use Filament\Notifications\Notification;
 
 class ListTasks extends ListRecords
 {
@@ -36,7 +33,7 @@ class ListTasks extends ListRecords
                 ->exporter(TasksExporter::class)
                 ->label('Export Tasks')
                 ->icon('heroicon-o-arrow-up-tray')
-                ->color('primary')
+                ->color('gray')
                 ->slideOver()
                 ->modalWidth(MaxWidth::Medium)
                 ->formats([
@@ -46,7 +43,7 @@ class ListTasks extends ListRecords
             \EightyNine\ExcelImport\ExcelImportAction::make()
                 // ->use(\App\Imports\ImportTask::class    )
                 ->label('Import Tasks')
-                ->color('primary')
+                ->color('gray')
                 ->slideOver()
                 ->modalWidth(MaxWidth::Medium)
                 ->closeModalByClickingAway(false)
@@ -82,45 +79,14 @@ class ListTasks extends ListRecords
         ];
     }
 
-    private function mapStatusLabel(string $status): string
+    public function setQuickStatusFilter(string $status): void
     {
-        return match ($status) {
-            'todo'      => 'Opened',
-            'progress'  => 'Progress',
-            'closed'      => 'Closed',
-            'overdue'   => 'Overdue',
-            'postponed' => 'Postponed',
-            default     => ucfirst($status),
-        };
-    }
-
-    public function getTabs(): array
-    {
-        $tabs = [
-            'all' => Tab::make('All')
-                ->badge($this->getModel()::count()),
-        ];
-
-        $statuses = $this->getModel()::query()
-            ->select('status')
-            ->distinct()
-            ->orderBy('status')
-            ->pluck('status');
-
-        foreach ($statuses as $status) {
-
-            $slug = str($status)->slug()->toString();
-            $label = $this->mapStatusLabel($status);
-
-            $tabs[$slug] = Tab::make($label)
-                ->badge(
-                    $this->getModel()::where('status', $status)->count()
-                )
-                ->modifyQueryUsing(
-                    fn($query) => $query->where('status', $status)
-                );
+        if ($status === 'all') {
+            data_set($this->tableFilters, 'status.values', []);
+        } else {
+            data_set($this->tableFilters, 'status.values', [$status]);
         }
 
-        return $tabs;
+        $this->updatedTableFilters();
     }
 }

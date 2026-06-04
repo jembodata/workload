@@ -55,16 +55,28 @@
         </tr>
     </table>
 
+    @php
+        $columnWidths = $columnWidths ?? [
+            'no' => 4,
+            'project_task' => 14,
+            'percent' => 16,
+            'issue' => 36,
+            'action_plan' => 10,
+            'pic' => 10,
+            'evaluasi' => 10,
+        ];
+    @endphp
+
     <table style="width:100%; border-collapse: collapse; table-layout: fixed; border:1px solid #000;">
         <thead>
             <tr>
-                <th style="width:4%; border:1px solid #000; padding:4px; text-align:center;">No</th>
-                <th style="width:10%; border:1px solid #000; padding:4px; text-align:center;">Item</th>
-                <th style="width:20%; border:1px solid #000; padding:4px; text-align:center;">Pembahasan (Input)</th>
-                <th style="width:36%; border:1px solid #000; padding:4px; text-align:center;">Rencana Tindakan (Output)</th>
-                <th style="width:10%; border:1px solid #000; padding:4px; text-align:center;">Target</th>
-                <th style="width:10%; border:1px solid #000; padding:4px; text-align:center;">PIC</th>
-                <th style="width:10%; border:1px solid #000; padding:4px; text-align:center;">Evaluasi Efektivitas</th>
+                <th style="width:{{ $columnWidths['no'] }}%; border:1px solid #000; padding:4px; text-align:center;">No</th>
+                <th style="width:{{ $columnWidths['project_task'] }}%; border:1px solid #000; padding:4px; text-align:center;">Project &amp; Task</th>
+                <th style="width:{{ $columnWidths['percent'] }}%; border:1px solid #000; padding:4px; text-align:center;">%</th>
+                <th style="width:{{ $columnWidths['issue'] }}%; border:1px solid #000; padding:4px; text-align:center;">Issue</th>
+                <th style="width:{{ $columnWidths['action_plan'] }}%; border:1px solid #000; padding:4px; text-align:center;">Action Plan</th>
+                <th style="width:{{ $columnWidths['pic'] }}%; border:1px solid #000; padding:4px; text-align:center;">PIC</th>
+                <th style="width:{{ $columnWidths['evaluasi'] }}%; border:1px solid #000; padding:4px; text-align:center;">Evaluasi Efektivitas</th>
             </tr>
         </thead>
         <tbody>

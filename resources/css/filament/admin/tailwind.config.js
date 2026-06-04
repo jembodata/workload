@@ -7,4 +7,11 @@ export default {
         './resources/views/filament/**/*.blade.php',
         './vendor/filament/**/*.blade.php',
     ],
+    theme: {
+        extend: {
+            fontFamily: {
+                sans: ['Figtree', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+        },
+    },
 }

@@ -1,4 +1,4 @@
-<x-filament-panels::page>
+<x-filament-panels::page class="task-report-builder-page">
     <x-filament-actions::modals />
 
     @php
@@ -7,145 +7,15 @@
         $isStep2Open = !($collapsed['2'] ?? false);
         $isStep3Open = !($collapsed['3'] ?? false);
         $isStep4Open = !($collapsed['4'] ?? false);
+        $isStep5Open = !($collapsed['5'] ?? false);
         $zoomClass = 'preview-zoom-' . str_replace('.', '-', $previewZoom ?? 'fit');
     @endphp
-
-    <style>
-        .fi-page div.grid.flex-1.auto-cols-fr.gap-y-8 {
-            display: block !important;
-            gap: 0 !important;
-            row-gap: 0 !important;
-        }
-
-        :root {
-            --a4-preview-width: 794px;
-            --a4-preview-height: 1123px;
-        }
-
-        #report-builder-layout {
-            display: none;
-            position: relative;
-            margin-top: 0;
-            padding-top: 0;
-        }
-
-        #report-left-panel {
-            width: 100%;
-            margin-top: -20px;
-        }
-
-        #report-right-preview {
-            width: 100%;
-        }
-
-        #report-right-preview .a4-sheet {
-            width: min(var(--a4-preview-width), 100%);
-            min-height: var(--a4-preview-height);
-            max-width: 100%;
-            padding: 12mm;
-            border: 1px solid #dfe5ee;
-            border-radius: 10px;
-            background: #fff;
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10);
-            overflow: hidden;
-        }
-
-        #report-right-preview.preview-zoom-0-75 .a4-sheet { width: min(596px, 100%); }
-        #report-right-preview.preview-zoom-1 .a4-sheet { width: min(var(--a4-preview-width), 100%); }
-        #report-right-preview.preview-zoom-fit .a4-sheet { width: 100%; max-width: var(--a4-preview-width); }
-
-        #report-right-preview .report-doc { font-family: Arial, Helvetica, sans-serif; font-size: 11px; line-height: 1.35; color: #000; }
-        #report-right-preview .report-doc .center { text-align: center; }
-        #report-right-preview .report-doc table { border-collapse: collapse; border-spacing: 0; width: 100%; }
-        #report-right-preview .report-doc .document-container { width: 100%; }
-        #report-right-preview .report-doc .header-table { border: 0.75px solid #000; table-layout: fixed; }
-        #report-right-preview .report-doc .details-table,
-        #report-right-preview .report-doc .data-table-section { border-left: 0.75px solid #000; border-right: 0.75px solid #000; border-bottom: 0.75px solid #000; border-top: 0; }
-        #report-right-preview .report-doc .header-table td { border: 0.75px solid #000; padding: 0; }
-        #report-right-preview .report-doc .logo-cell { width: 18%; text-align: center; vertical-align: middle; padding: 7px 5px; }
-        #report-right-preview .report-doc .logo-wrap { width: 100%; height: 56px; margin: 0 auto; text-align: center; overflow: hidden; white-space: nowrap; }
-        #report-right-preview .report-doc .logo-wrap img { width: auto; height: auto; max-width: 112px; max-height: 56px; display: inline-block; vertical-align: middle; }
-        #report-right-preview .report-doc .title-cell { text-align: center; vertical-align: middle; }
-        #report-right-preview .report-doc .main-title { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.1; }
-        #report-right-preview .report-doc .sub-title { margin-top: 2px; font-size: 10.5px; font-style: italic; font-weight: 700; color: #0054a6; }
-        #report-right-preview .report-doc .info-cell { width: 25%; vertical-align: top; padding: 0; }
-        #report-right-preview .report-doc .info-table td { border: 0.75px solid #000; font-size: 10px; padding: 2px 5px; line-height: 1.2; vertical-align: middle; }
-        #report-right-preview .report-doc .info-table tr:first-child td { border-top: 0; }
-        #report-right-preview .report-doc .info-table tr:last-child td { border-bottom: 0; }
-        #report-right-preview .report-doc .info-table td:first-child { border-left: 0; }
-        #report-right-preview .report-doc .info-table td:last-child { border-right: 0; }
-        #report-right-preview .report-doc .info-table .label { width: 45%; white-space: nowrap; font-weight: 700; }
-        #report-right-preview .report-doc .details-table { table-layout: fixed; }
-        #report-right-preview .report-doc .details-table td { border: 0.75px solid #000; padding: 2px 5px; }
-        #report-right-preview .report-doc .details-table tr:first-child td { border-top: 0; }
-        #report-right-preview .report-doc .detail-label { width: 18%; white-space: nowrap; font-weight: 700; }
-        #report-right-preview .report-doc .detail-value { width: 82%; }
-        #report-right-preview .report-doc .data-table-section { table-layout: fixed; }
-        #report-right-preview .report-doc .data-table-section th,
-        #report-right-preview .report-doc .data-table-section td { border: 0.75px solid #000; padding: 4px; vertical-align: top; }
-        #report-right-preview .report-doc .data-table-section thead tr:first-child th { border-top: 0; }
-        #report-right-preview .report-doc .data-table-section th { text-align: center; font-size: 10px; font-weight: 700; }
-        #report-right-preview .report-doc .col-no { width: 4%; }
-        #report-right-preview .report-doc .col-item { width: 14%; }
-        #report-right-preview .report-doc .col-pembahasan { width: 16%; }
-        #report-right-preview .report-doc .col-rencana { width: 36%; }
-        #report-right-preview .report-doc .col-target { width: 10%; }
-        #report-right-preview .report-doc .col-pic { width: 10%; }
-        #report-right-preview .report-doc .col-evaluasi { width: 10%; }
-        #report-right-preview .report-doc .eval-stack { display: block; }
-        #report-right-preview .report-doc .eval-pill { display: block; border: 0.75px solid #000; border-radius: 2px; text-align: center; font-size: 9px; font-weight: 700; line-height: 1.25; padding: 2px 3px; }
-        #report-right-preview .report-doc .eval-pill + .eval-pill { margin-top: 3px; }
-        #report-right-preview .report-doc .eval-tbd { background: #e5e7eb; color: #111827; }
-        #report-right-preview .report-doc .eval-progress { background: #fde047; color: #111827; }
-        #report-right-preview .report-doc .eval-open { background: #93c5fd; color: #111827; }
-        #report-right-preview .report-doc .eval-overdue { background: #fca5a5; color: #111827; }
-        #report-right-preview .report-doc .eval-postponed { background: #d1d5db; color: #111827; }
-        #report-right-preview .report-doc .eval-closed { background: #86efac; color: #111827; }
-        #report-right-preview .report-doc .empty-message { color: #6b7280; padding: 9px 5px; }
-        #report-right-preview .report-doc .signature-section { width: 52%; padding: 0; margin-left: auto; margin-right: 0; }
-        #report-right-preview .report-doc .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 0 !important; }
-        #report-right-preview .report-doc .signature-cell { width: 33.333%; text-align: center; vertical-align: top; padding: 0 8px; border: 0 !important; }
-        #report-right-preview .report-doc .signature-cell-empty { padding: 0; }
-        #report-right-preview .report-doc .signature-label { font-size: 10px; }
-        #report-right-preview .report-doc .signature-space { height: 34px; }
-        #report-right-preview .report-doc .signature-line { border-top: 0.75px solid #000; margin: 0 8px 2px; }
-        #report-right-preview .report-doc .signature-name { font-size: 10px; font-weight: 700; }
-        #report-right-preview .report-doc .signature-role { font-size: 9.5px; color: #222; }
-
-        .rb-shell { border: 1px solid #d9e0ea; border-radius: 14px; background: #fff; box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05); overflow: hidden; }
-        .rb-section { border: 1px solid #d9e0ea; border-radius: 12px; background: #fff; overflow: hidden; }
-        .rb-section-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #eef2f7; background: #f8fafc; }
-        .rb-section-body { padding: 12px 14px; }
-        .rb-chip { display: inline-flex; align-items: center; border: 1px solid #dbe4f0; border-radius: 999px; background: #f8fafc; color: #334155; font-size: 11px; line-height: 1; padding: 4px 8px; }
-        .rb-list-item { border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; transition: 0.2s ease; }
-        .rb-list-item:hover { border-color: #bfdbfe; background: #f8fbff; }
-        .rb-list-item.rb-selected { border-color: #93c5fd; background: #eff6ff; }
-
-        .dnd-sort-item { cursor: grab; user-select: none; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
-        .dnd-sort-handle { cursor: grab; color: #64748b; font-size: 16px; line-height: 1; }
-        .dnd-sort-item:active .dnd-sort-handle { cursor: grabbing; }
-        .dnd-sort-item.dnd-dragging { opacity: .55; border-style: dashed; }
-        .dnd-target-before { border-top: 2px solid #2563eb !important; }
-
-        .rb-preview-toolbar { position: sticky; top: 0; z-index: 4; border: 1px solid #d9e0ea; border-radius: 12px; background: #fff; padding: 10px; }
-        #report-right-preview-scroll { padding: 14px; border: 1px solid #d9dee7; border-radius: 14px; background: #edf1f6; box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06); max-height: calc(100vh - 11rem); overflow: auto; }
-
-        #report-non-desktop-notice { display: block; margin: 0 0 12px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; font-size: 12px; line-height: 1.4; }
-
-        @media (min-width: 1280px) {
-            #report-non-desktop-notice { display: none; }
-            #report-builder-layout { display: block; padding-right: calc(min(48vw, 900px) + 24px); margin-top: 0; }
-            #report-left-panel { width: auto; min-width: 640px; max-width: 760px; margin-top: -24px; }
-            #report-right-preview { position: fixed; right: 1rem; top: 5rem; z-index: 1; width: min(48vw, 900px); }
-        }
-    </style>
-
     <div id="report-non-desktop-notice">
         Preview report paling akurat untuk layar desktop (>= 1280px). Di layar kecil, gunakan tombol <strong>Render PDF</strong> untuk hasil final ukuran A4.
     </div>
 
     <div id="report-builder-layout">
-        <aside id="report-left-panel" class="space-y-3" style="max-width: 760px;">
+        <aside id="report-left-panel" class="space-y-3">
             <div class="rb-shell space-y-3 p-3">
                 <section class="rb-section">
                     <div class="rb-section-header">
@@ -213,7 +83,6 @@
                                 <x-filament::button size="xs" color="primary" icon="heroicon-o-funnel" wire:click="selectFilteredTasks">Pilih Filter</x-filament::button>
                                 <x-filament::button size="xs" color="danger" icon="heroicon-o-x-circle" wire:click="unselectFilteredTasks">Hapus Filter</x-filament::button>
                             </div>
-                            <div class="text-[11px] text-gray-500">Pilih Halaman untuk batch kecil, Pilih Hasil Filter untuk semua hasil saat ini.</div>
 
                             <div class="max-h-72 space-y-1 overflow-auto rounded-lg border border-gray-200 bg-gray-50/60 p-2">
                                 @forelse ($availableTasks as $task)
@@ -223,7 +92,7 @@
                                         <span class="min-w-0 flex-1 text-xs">
                                             <span class="flex items-start justify-between gap-2">
                                                 <span class="truncate font-medium text-gray-900">{{ $task->task_name ?: '-' }}</span>
-                                                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold {{ ((int) ($task->issues_count ?? 0)) > 0 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600' }}">
+                                                <span class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold {{ ((int) ($task->issues_count ?? 0)) > 0 ? 'bg-indigo-100 text-indigo-800' : 'bg-gray-100 text-gray-600' }}">
                                                     {{ (int) ($task->issues_count ?? 0) }} issue
                                                 </span>
                                             </span>
@@ -314,7 +183,6 @@
                                 <x-filament::button size="xs" color="primary" icon="heroicon-o-funnel" wire:click="selectFilteredIssues" :disabled="!$canAccessIssueStep">Pilih Filter</x-filament::button>
                                 <x-filament::button size="xs" color="danger" icon="heroicon-o-x-circle" wire:click="unselectFilteredIssues" :disabled="!$canAccessIssueStep">Hapus Filter</x-filament::button>
                             </div>
-                            <div class="text-[11px] text-gray-500">Filter issue mengikuti task terpilih agar hasil report tetap relevan.</div>
 
                             <div class="max-h-64 space-y-1 overflow-auto rounded-lg border border-gray-200 bg-gray-50/60 p-2">
                                 @if (!$canAccessIssueStep)
@@ -326,8 +194,11 @@
                                             <input type="checkbox" wire:model.live="selectedIssueIds" value="{{ (string) $issue->id }}" class="mt-1 rounded border-gray-300">
                                             <span class="min-w-0 flex-1 text-xs">
                                                 <span class="flex items-start justify-between gap-2">
-                                                    <span class="truncate font-medium text-gray-900">{{ $issue->issue_name ?: '-' }}</span>
-                                                    <span class="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">Task: {{ $issue->task?->task_name ?? '-' }}</span>
+                                                    <span class="truncate font-medium text-gray-900">{{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($issue->issue_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 70, '...') }}</span>
+                                                    <span class="flex shrink-0 items-center gap-1">
+                                                        <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">{{ (int) ($issue->action_plans_count ?? 0) }} action plan</span>
+                                                        <span class="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">Task: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($issue->task?->task_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 45, '...') }}</span>
+                                                    </span>
                                                 </span>
                                                 <span class="mt-0.5 block text-gray-500">
                                                     PIC: {{ $issue->staff?->name ?? '-' }} •
@@ -360,11 +231,110 @@
                 <section class="rb-section">
                     <div class="rb-section-header">
                         <div>
-                            <div class="text-sm font-semibold text-gray-900">4) Urutan & Final Check</div>
+                            <div class="text-sm font-semibold text-gray-900">4) Pilih Action Plan</div>
                         </div>
-                        <x-filament::icon-button icon="{{ $isStep4Open ? 'heroicon-m-chevron-up' : 'heroicon-m-chevron-down' }}" color="gray" size="sm" wire:click="toggleBuilderStep(4)" aria-label="Toggle Step 4" />
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">{{ count($selectedActionPlanIds) }} dipilih</span>
+                            <x-filament::icon-button icon="{{ $isStep4Open ? 'heroicon-m-chevron-up' : 'heroicon-m-chevron-down' }}" color="gray" size="sm" wire:click="toggleBuilderStep(4)" aria-label="Toggle Step 4" />
+                        </div>
                     </div>
                     @if ($isStep4Open)
+                        <div class="rb-section-body space-y-3">
+                            @if (!$canAccessActionPlanStep)
+                                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                                    Pilih minimal satu issue di Step 3 untuk mengaktifkan pemilihan action plan.
+                                </div>
+                            @else
+                                <input
+                                    type="text"
+                                    wire:model.live.debounce.300ms="actionPlanSearch"
+                                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                                    placeholder="Cari action plan, issue, task, PIC"
+                                >
+
+                                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <select wire:model.live="actionPlanFilterStatus" class="w-full rounded-lg border border-gray-300 px-2 py-2 text-xs">
+                                        <option value="">All Action Plan Status</option>
+                                        @foreach ($actionPlanStatusOptions as $status)
+                                            <option value="{{ $status }}">{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
+                                        @endforeach
+                                    </select>
+                                    <select wire:model.live="actionPlanFilterStaffId" class="w-full rounded-lg border border-gray-300 px-2 py-2 text-xs">
+                                        <option value="">All PIC Action Plan</option>
+                                        @foreach ($actionPlanStaffOptions as $staffId => $staffName)
+                                            <option value="{{ $staffId }}">{{ $staffName }}</option>
+                                        @endforeach
+                                    </select>
+                                    <label class="flex items-center gap-2 rounded-lg border border-gray-200 px-2 py-2 text-xs text-gray-700 sm:col-span-2">
+                                        <input type="checkbox" wire:model.live="showOnlySelectedActionPlans" class="rounded border-gray-300">
+                                        Show selected only
+                                    </label>
+                                </div>
+
+                                @if (!empty($actionPlanFilterChips))
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($actionPlanFilterChips as $chip)
+                                            <span class="rb-chip">{{ $chip }}</span>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <x-filament::button size="xs" color="primary" icon="heroicon-o-check-circle" wire:click="selectCurrentPageActionPlans">Pilih Halaman</x-filament::button>
+                                    <x-filament::button size="xs" color="primary" icon="heroicon-o-funnel" wire:click="selectFilteredActionPlans">Pilih Filter</x-filament::button>
+                                    <x-filament::button size="xs" color="danger" icon="heroicon-o-x-circle" wire:click="unselectFilteredActionPlans">Hapus Filter</x-filament::button>
+                                </div>
+
+                                <div class="max-h-64 space-y-1 overflow-auto rounded-lg border border-gray-200 bg-gray-50/60 p-2">
+                                    @forelse ($availableActionPlans as $actionPlan)
+                                        @php $isSelectedActionPlan = in_array((string) $actionPlan->id, $selectedActionPlanIds, true); @endphp
+                                        <label class="rb-list-item {{ $isSelectedActionPlan ? 'rb-selected' : '' }} flex cursor-pointer items-start gap-2 px-2 py-2" wire:key="action-plan-picker-{{ $actionPlan->id }}">
+                                            <input type="checkbox" wire:model.live="selectedActionPlanIds" value="{{ (string) $actionPlan->id }}" class="mt-1 rounded border-gray-300">
+                                            <span class="min-w-0 flex-1 text-xs">
+                                                <span class="flex items-start justify-between gap-2">
+                                                    <span class="truncate font-medium text-gray-900">
+                                                        {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($actionPlan->description ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 80, '...') }}
+                                                    </span>
+                                                    <span class="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800">
+                                                        Issue: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($actionPlan->issue?->issue_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 36, '...') }}
+                                                    </span>
+                                                </span>
+                                                <span class="mt-0.5 block text-gray-500">
+                                                    Task: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($actionPlan->issue?->task?->task_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 36, '...') }} •
+                                                    PIC: {{ $actionPlan->pic?->name ?? '-' }} •
+                                                    Status: {{ ucfirst(str_replace('_', ' ', (string) ($actionPlan->status ?? '-'))) }}
+                                                </span>
+                                            </span>
+                                        </label>
+                                    @empty
+                                        <p class="px-2 py-1 text-xs text-gray-500">Action plan tidak ditemukan untuk issue yang dipilih.</p>
+                                    @endforelse
+                                </div>
+
+                                <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs">
+                                    <span class="text-gray-600">{{ $actionPlanPickerMeta['from'] ?? 0 }}-{{ $actionPlanPickerMeta['to'] ?? 0 }} / {{ $actionPlanPickerMeta['total'] ?? 0 }}</span>
+                                    <div class="flex items-center gap-1">
+                                        <x-filament::button size="xs" color="gray" wire:click="previousActionPlanPickerPage" :disabled="($actionPlanPickerMeta['page'] ?? 1) <= 1">Prev</x-filament::button>
+                                        <span class="px-1 text-gray-600">{{ $actionPlanPickerMeta['page'] ?? 1 }}/{{ $actionPlanPickerMeta['last_page'] ?? 1 }}</span>
+                                        <x-filament::button size="xs" color="gray" wire:click="nextActionPlanPickerPage" :disabled="($actionPlanPickerMeta['page'] ?? 1) >= ($actionPlanPickerMeta['last_page'] ?? 1)">Next</x-filament::button>
+                                    </div>
+                                </div>
+
+                                <x-filament::button size="xs" color="danger" outlined wire:click="clearSelectedActionPlans" class="w-full">
+                                    Clear Semua Action Plan Terpilih
+                                </x-filament::button>
+                            @endif
+                        </div>
+                    @endif
+                </section>
+                <section class="rb-section">
+                    <div class="rb-section-header">
+                        <div>
+                            <div class="text-sm font-semibold text-gray-900">5) Urutan & Final Check</div>
+                        </div>
+                        <x-filament::icon-button icon="{{ $isStep5Open ? 'heroicon-m-chevron-up' : 'heroicon-m-chevron-down' }}" color="gray" size="sm" wire:click="toggleBuilderStep(5)" aria-label="Toggle Step 5" />
+                    </div>
+                    @if ($isStep5Open)
                         <div class="rb-section-body space-y-3">
                             @if (!$canAccessFinalStep)
                                 <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
@@ -431,8 +401,8 @@
                                                     <div class="flex min-w-0 items-start gap-2 text-xs">
                                                         <span class="dnd-sort-handle mt-0.5" aria-hidden="true">⋮⋮</span>
                                                         <div class="min-w-0">
-                                                            <div class="truncate font-medium text-gray-900">{{ $issueIndex + 1 }}. {{ $selectedIssue->issue_name ?: '-' }}</div>
-                                                            <div class="truncate text-[11px] text-gray-500">Task: {{ $selectedIssue->task?->task_name ?? '-' }} • PIC: {{ $selectedIssue->staff?->name ?? '-' }}</div>
+                                                            <div class="truncate font-medium text-gray-900">{{ $issueIndex + 1 }}. {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($selectedIssue->issue_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 80, '...') }}</div>
+                                                            <div class="truncate text-[11px] text-gray-500">Task: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($selectedIssue->task?->task_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 45, '...') }} • PIC: {{ $selectedIssue->staff?->name ?? '-' }}</div>
                                                         </div>
                                                     </div>
                                                     <div class="flex shrink-0 items-center gap-1" data-dnd-ignore="true">
@@ -447,6 +417,49 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                <div class="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-2">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="text-xs font-semibold uppercase tracking-wide text-gray-600">Urutan Action Plan di Report</div>
+                                        <div class="flex flex-wrap gap-1">
+                                            <x-filament::button size="xs" color="gray" icon="heroicon-o-arrow-path" wire:click="resetActionPlanOrder">Reset</x-filament::button>
+                                            <x-filament::button size="xs" color="gray" icon="heroicon-o-list-bullet" wire:click="sortSelectedActionPlansByDescription">Sort Deskripsi</x-filament::button>
+                                            <x-filament::button size="xs" color="gray" icon="heroicon-o-link" wire:click="sortSelectedActionPlansByIssue">Sort Issue</x-filament::button>
+                                            <x-filament::button size="xs" color="gray" icon="heroicon-o-arrow-uturn-left" wire:click="undoActionPlanOrder">Undo</x-filament::button>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-1" data-dnd-list="action-plan">
+                                        @if (($selectedActionPlansOrdered ?? collect())->isNotEmpty())
+                                            @foreach ($selectedActionPlansOrdered as $actionPlanIndex => $selectedActionPlan)
+                                                <div
+                                                    class="dnd-sort-item flex items-center justify-between gap-2 px-2 py-1.5"
+                                                    wire:key="action-plan-order-{{ $selectedActionPlan->id }}"
+                                                    data-dnd-item="{{ $selectedActionPlan->id }}"
+                                                    draggable="true"
+                                                >
+                                                    <div class="flex min-w-0 items-start gap-2 text-xs">
+                                                        <span class="dnd-sort-handle mt-0.5" aria-hidden="true">⋮⋮</span>
+                                                        <div class="min-w-0">
+                                                            <div class="truncate font-medium text-gray-900">{{ $actionPlanIndex + 1 }}. {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($selectedActionPlan->description ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 80, '...') }}</div>
+                                                            <div class="truncate text-[11px] text-gray-500">
+                                                                Issue: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($selectedActionPlan->issue?->issue_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 34, '...') }} •
+                                                                Task: {{ \Illuminate\Support\Str::limit(trim(strip_tags(html_entity_decode((string) ($selectedActionPlan->issue?->task?->task_name ?? '-'), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), 28, '...') }} •
+                                                                PIC: {{ $selectedActionPlan->pic?->name ?? '-' }}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex shrink-0 items-center gap-1" data-dnd-ignore="true">
+                                                        <x-filament::icon-button size="xs" color="gray" icon="heroicon-m-chevron-up" wire:click="moveActionPlanSelectionUp('{{ $selectedActionPlan->id }}')" aria-label="Naikkan action plan" />
+                                                        <x-filament::icon-button size="xs" color="gray" icon="heroicon-m-chevron-down" wire:click="moveActionPlanSelectionDown('{{ $selectedActionPlan->id }}')" aria-label="Turunkan action plan" />
+                                                        <x-filament::icon-button size="xs" color="danger" icon="heroicon-m-x-mark" wire:click="removeSelectedActionPlan('{{ $selectedActionPlan->id }}')" aria-label="Hapus action plan terpilih" />
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        @else
+                                            <p class="px-1 py-1 text-xs text-gray-500">Belum ada action plan terpilih.</p>
+                                        @endif
+                                    </div>
+                                </div>
                             @endif
                         </div>
                     @endif
@@ -454,26 +467,48 @@
             </div>
         </aside>
 
-        <section id="report-right-preview" class="min-w-0 {{ $zoomClass }}" style="margin-top: 0;">
+        <section id="report-right-preview" class="min-w-0 {{ $zoomClass }}">
             <div class="rb-preview-toolbar mb-2 space-y-2">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex flex-wrap items-center gap-2 text-xs">
+                <div class="rb-preview-meta">
+                    <div class="rb-preview-meta-left">
                         @if ($previewDirty)
-                            <span class="rb-chip" style="border-color:#fbbf24;background:#fffbeb;color:#92400e;">Changes not rendered</span>
+                            <span class="rb-chip rb-chip-warning">Changes not rendered</span>
                         @else
-                            <span class="rb-chip" style="border-color:#86efac;background:#f0fdf4;color:#166534;">Preview updated</span>
+                            <span class="rb-chip rb-chip-success">Preview updated</span>
                         @endif
+                        @if (!empty($editingHistoryId))
+                            <span class="rb-chip">Edit History #{{ $editingHistoryId }} - sumber V{{ $editingVersionNo }}</span>
+                        @endif
+                    </div>
+                    <div class="rb-preview-meta-right">
                         <span class="text-gray-500">Last sync: {{ $lastPreviewAt ?: '-' }}</span>
                         <span class="text-gray-500">Last rendered: {{ $lastRenderedAt ?: '-' }}</span>
                     </div>
+                </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
+                <div class="rb-preview-actions">
+                    <div class="rb-preview-actions-left">
+                        @if (!empty($editingHistoryId) && !empty($historyVersionOptions))
+                            <label class="rb-preview-version-label" for="history-version-select">Versi</label>
+                            <select
+                                id="history-version-select"
+                                wire:model.live="selectedHistoryVersionId"
+                                class="rb-preview-version-select"
+                            >
+                                @foreach ($historyVersionOptions as $versionHistoryId => $versionLabel)
+                                    <option value="{{ $versionHistoryId }}">{{ $versionLabel }}</option>
+                                @endforeach
+                            </select>
+                        @endif
+                    </div>
+
+                    <div class="rb-preview-actions-right">
                         <x-filament::button size="sm" color="gray" wire:click="refreshPreviewState">Refresh Preview</x-filament::button>
+                        <x-filament::button size="sm" color="gray" icon="heroicon-o-adjustments-horizontal" wire:click="mountAction('manageColumnWidths')">Lebar Kolom</x-filament::button>
                         <x-filament::button size="sm" color="gray" icon="heroicon-o-document-text" disabled x-tooltip="{ content: 'Sementara dinonaktifkan' }">Render DOCX</x-filament::button>
                         <x-filament::button size="sm" icon="heroicon-o-document-arrow-down" wire:click="mountAction('renderPdf')">Render PDF</x-filament::button>
                     </div>
                 </div>
-
             </div>
 
             <div id="report-right-preview-scroll">
@@ -503,6 +538,7 @@
                                         'signaturePushPx' => (int) ($page['signaturePushPx'] ?? 0),
                                         'pageNumber' => (int) ($page['pageNumber'] ?? 1),
                                         'totalPages' => (int) ($page['totalPages'] ?? 1),
+                                        'isInteractivePreview' => true,
                                     ])
                                 </div>
                             </div>
@@ -510,7 +546,9 @@
                     @else
                         <div class="a4-sheet mx-auto overflow-hidden">
                             <div class="report-doc">
-                                @include('filament.pages.partials.task-report-document')
+                                @include('filament.pages.partials.task-report-document', [
+                                    'isInteractivePreview' => true,
+                                ])
                             </div>
                         </div>
                     @endif
@@ -582,6 +620,8 @@
                     component.call('reorderSelectedTasks', ids);
                 } else if (listType === 'issue') {
                     component.call('reorderSelectedIssues', ids);
+                } else if (listType === 'action-plan') {
+                    component.call('reorderSelectedActionPlans', ids);
                 }
             };
 
@@ -666,6 +706,127 @@
                 draggingElement = null;
                 draggingType = null;
             });
+
+            // Column resize (Excel-like splitter on preview header)
+            let resizeContext = null;
+            const minColumnPercent = 3;
+
+            const parseCurrentColumnWidths = (table) => {
+                const cols = [...table.querySelectorAll('colgroup col[data-col-key]')];
+                const widths = {};
+
+                cols.forEach((col) => {
+                    const key = col.getAttribute('data-col-key');
+                    const value = parseFloat(col.style.width || '0');
+                    if (key) {
+                        widths[key] = Number.isFinite(value) ? value : 0;
+                    }
+                });
+
+                return widths;
+            };
+
+            const applyWidthsToPreviewTables = (widths) => {
+                document
+                    .querySelectorAll('#report-right-preview table[data-resizable-report-table="1"]')
+                    .forEach((table) => {
+                        table.querySelectorAll('colgroup col[data-col-key]').forEach((col) => {
+                            const key = col.getAttribute('data-col-key');
+                            if (!key || typeof widths[key] === 'undefined') {
+                                return;
+                            }
+
+                            col.style.width = `${Number(widths[key]).toFixed(2)}%`;
+                        });
+                    });
+            };
+
+            const persistResizedWidths = (wireId, widths) => {
+                if (!wireId || !window.Livewire) {
+                    return;
+                }
+
+                const component = window.Livewire.find(wireId);
+                if (!component) {
+                    return;
+                }
+
+                component.call('applyColumnResize', widths);
+            };
+
+            document.addEventListener('mousedown', (event) => {
+                const handle = event.target.closest('.preview-col-resize-handle');
+                if (!handle) {
+                    return;
+                }
+
+                const table = handle.closest('table[data-resizable-report-table="1"]');
+                if (!table) {
+                    return;
+                }
+
+                const leftKey = handle.getAttribute('data-resize-left');
+                const rightKey = handle.getAttribute('data-resize-right');
+                if (!leftKey || !rightKey) {
+                    return;
+                }
+
+                const initialWidths = parseCurrentColumnWidths(table);
+                const leftStart = Number(initialWidths[leftKey] ?? 0);
+                const rightStart = Number(initialWidths[rightKey] ?? 0);
+                const pairTotal = leftStart + rightStart;
+
+                if (pairTotal <= 0) {
+                    return;
+                }
+
+                event.preventDefault();
+                handle.classList.add('preview-col-resize-active');
+
+                resizeContext = {
+                    handle,
+                    tableWidth: Math.max(1, table.getBoundingClientRect().width),
+                    startX: event.clientX,
+                    leftKey,
+                    rightKey,
+                    leftStart,
+                    pairTotal,
+                    widths: initialWidths,
+                    wireId: table.closest('[wire\\:id]')?.getAttribute('wire:id') ?? null,
+                };
+            });
+
+            document.addEventListener('mousemove', (event) => {
+                if (!resizeContext) {
+                    return;
+                }
+
+                const deltaPercent = ((event.clientX - resizeContext.startX) / resizeContext.tableWidth) * 100;
+                const minLeft = minColumnPercent;
+                const maxLeft = resizeContext.pairTotal - minColumnPercent;
+                const nextLeft = Math.min(maxLeft, Math.max(minLeft, resizeContext.leftStart + deltaPercent));
+                const nextRight = resizeContext.pairTotal - nextLeft;
+
+                const nextWidths = {
+                    ...resizeContext.widths,
+                    [resizeContext.leftKey]: Number(nextLeft.toFixed(2)),
+                    [resizeContext.rightKey]: Number(nextRight.toFixed(2)),
+                };
+
+                resizeContext.widths = nextWidths;
+                applyWidthsToPreviewTables(nextWidths);
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (!resizeContext) {
+                    return;
+                }
+
+                resizeContext.handle.classList.remove('preview-col-resize-active');
+                persistResizedWidths(resizeContext.wireId, resizeContext.widths);
+                resizeContext = null;
+            });
         })();
     </script>
 </x-filament-panels::page>
+

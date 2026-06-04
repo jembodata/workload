@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Task;
+use App\Models\Issue;
+use App\Models\IssueActionPlan;
 use App\Models\Role;
 
 class Staff extends Model
@@ -16,6 +18,16 @@ class Staff extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'staff_id');
+    }
+
+    public function issues(): HasMany
+    {
+        return $this->hasMany(Issue::class, 'staff_id');
+    }
+
+    public function issueActionPlansAsPic(): HasMany
+    {
+        return $this->hasMany(IssueActionPlan::class, 'pic_staff_id');
     }
 
     public function role(): BelongsTo

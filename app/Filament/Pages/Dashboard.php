@@ -17,6 +17,7 @@ use Carbon\Carbon;
 
 class Dashboard extends BaseDashboard
 {
+    protected static ?string $navigationIcon = 'heroicon-s-squares-plus';
     use HasFiltersForm;
     public function mount(): void
     {
@@ -33,9 +34,9 @@ class Dashboard extends BaseDashboard
     {
         return [
             StatsOverview::class,
-            WorkloadAlertToday::class,
-            DueThisWeek::class,
-            PriorityTaskTable::class,
+            // WorkloadAlertToday::class,
+            // DueThisWeek::class,
+            // PriorityTaskTable::class,
             StaffTaskChart::class,
             TaskChart::class,
             RoleOverview::class,
