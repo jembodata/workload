@@ -81,6 +81,7 @@ class TaskResource extends Resource
                 //     ->toggleable(isToggledHiddenByDefault: false),
 
                 Tables\Columns\TextColumn::make('task_name')
+                    ->extraCellAttributes(['class' => 'ps-2'])
                     ->label('Item & Task')
                     ->weight('bold')
                     ->width('380px')
@@ -154,6 +155,7 @@ class TaskResource extends Resource
                 Tables\Columns\TextColumn::make('priority')
                     ->label('Priority')
                     ->Badge()
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false)
                     ->colors([
                         'danger' => 'urgent',
