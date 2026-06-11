@@ -196,7 +196,7 @@ class IssuesRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('issue_name')
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['actionPlans.pic']))
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['actionPlans.pic']))
             ->defaultSort('priority', 'asc')
             ->groups([
                 Tables\Grouping\Group::make('status')
@@ -271,7 +271,7 @@ class IssuesRelationManager extends RelationManager
 
                 Tables\Columns\TextColumn::make('action_plan_count')
                     ->label('Action Plan')
-                    ->state(fn (Model $record): int => $this->actionPlanCount($record))
+                    ->state(fn(Model $record): int => $this->actionPlanCount($record))
                     ->badge()
                     ->alignCenter(),
 
@@ -286,6 +286,7 @@ class IssuesRelationManager extends RelationManager
                     ->label('Due Date')
                     ->date('d M Y')
                     ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true)
                     ->color(fn($record) => $record->due_date?->isPast() ? 'danger' : 'gray'),
             ])
             ->filters([
@@ -296,25 +297,27 @@ class IssuesRelationManager extends RelationManager
                     ->slideOver()
                     ->createAnother(false)
                     ->closeModalByClickingAway(false)
-                    ->modalWidth(MaxWidth::FiveExtraLarge),
+                    ->modalWidth(MaxWidth::ThreeExtraLarge),
             ])
             ->actions([
-                Tables\Actions\Action::make('viewActionPlans')
-                    ->label('View Action Plan')
-                    ->icon('heroicon-o-list-bullet')
-                    ->color('gray')
-                    ->slideOver()
-                    ->closeModalByClickingAway(true)
-                    ->modalWidth(MaxWidth::FiveExtraLarge)
-                    ->modalHeading('Action Plan')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Close')
-                    ->modalContent(fn (Model $record): HtmlString => new HtmlString($this->renderActionPlanListHtml($record))),
-                Tables\Actions\EditAction::make()
-                    ->slideOver()
-                    ->closeModalByClickingAway(false)
-                    ->modalWidth(MaxWidth::FiveExtraLarge),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ActionGroup::make([
+                    Tables\Actions\Action::make('viewActionPlans')
+                        ->label('View Action Plan')
+                        ->icon('heroicon-o-list-bullet')
+                        ->color('gray')
+                        ->slideOver()
+                        ->closeModalByClickingAway(true)
+                        ->modalWidth(MaxWidth::ThreeExtraLarge)
+                        ->modalHeading('Action Plan')
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Close')
+                        ->modalContent(fn(Model $record): HtmlString => new HtmlString($this->renderActionPlanListHtml($record))),
+                    Tables\Actions\EditAction::make()
+                        ->slideOver()
+                        ->closeModalByClickingAway(false)
+                        ->modalWidth(MaxWidth::ThreeExtraLarge),
+                    Tables\Actions\DeleteAction::make(),
+                ])
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -331,7 +334,7 @@ class IssuesRelationManager extends RelationManager
 
         if ($plans->isNotEmpty()) {
             return $plans
-                ->map(fn ($plan) => $this->normalizeDescriptionText((string) ($plan->description ?? '')))
+                ->map(fn($plan) => $this->normalizeDescriptionText((string) ($plan->description ?? '')))
                 ->filter()
                 ->implode(' ');
         }
@@ -349,7 +352,7 @@ class IssuesRelationManager extends RelationManager
 
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
             return collect($decoded)
-                ->map(fn (mixed $item) => is_array($item) ? $this->normalizeDescriptionText((string) ($item['description'] ?? '')) : '')
+                ->map(fn(mixed $item) => is_array($item) ? $this->normalizeDescriptionText((string) ($item['description'] ?? '')) : '')
                 ->filter()
                 ->implode(' ');
         }
@@ -373,7 +376,7 @@ class IssuesRelationManager extends RelationManager
             : $record->actionPlans()->orderBy('sort_order')->get();
 
         return $plans
-            ->filter(fn ($plan) => $this->normalizeDescriptionText((string) ($plan->description ?? '')) !== '')
+            ->filter(fn($plan) => $this->normalizeDescriptionText((string) ($plan->description ?? '')) !== '')
             ->count();
     }
 

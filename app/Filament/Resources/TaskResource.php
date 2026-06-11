@@ -128,7 +128,7 @@ class TaskResource extends Resource
                     ->date('d-m-y')
                     ->sortable()
                     ->hidden(fn($record) => $record?->is_long_term)
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
 
                 Tables\Columns\TextColumn::make('tanggal_akhir')
@@ -296,7 +296,7 @@ class TaskResource extends Resource
                     ->size(TextColumnSize::Medium)
                     ->formatStateUsing(fn($state) => (string) ((int) $state))
                     ->color(fn($state) => $state > 0 ? 'danger' : 'zinc')
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('issues_count')
                     ->counts('issues')
@@ -314,7 +314,7 @@ class TaskResource extends Resource
                             ->label('View Issues')
                             ->color('info')
                             ->slideOver()
-                            ->modalWidth(MaxWidth::SixExtraLarge)
+                            ->modalWidth(MaxWidth::ThreeExtraLarge)
                             // ->closeModalByClickingAway(false)
                             ->relationManager(IssuesRelationManager::make())
                     )
