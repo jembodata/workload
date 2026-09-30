@@ -21,6 +21,12 @@ class TasksExporter extends Exporter
             ExportColumn::make('task_name')
                 ->label('Task Name'),
 
+            ExportColumn::make('issues')
+                ->label('Issues List')
+                ->getStateUsing(function ($record) {
+                    return $record->issues->pluck('issue_name')->implode(', ') ?: '-';
+                }),
+
             ExportColumn::make('input')
                 ->label('Input'),
 
