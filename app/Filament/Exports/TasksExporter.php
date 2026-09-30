@@ -14,8 +14,12 @@ class TasksExporter extends Exporter
     public static function getColumns(): array
     {
         return [
+            ExportColumn::make('project.project_name')
+                ->label('Project')
+                ->getStateUsing(fn($record) => $record->project?->project_name ?? '-'),
+
             ExportColumn::make('task_name')
-                ->label('Item'),
+                ->label('Task Name'),
 
             ExportColumn::make('input')
                 ->label('Input'),
@@ -40,8 +44,8 @@ class TasksExporter extends Exporter
             ExportColumn::make('is_long_term')
                 ->label('Long Term'),
 
-            // ExportColumn::make('tanggal')
-            //     ->label('Start Date'),
+            ExportColumn::make('tanggal')
+                ->label('Start Date'),
 
             ExportColumn::make('tanggal_akhir')
                 ->label('End Date'),

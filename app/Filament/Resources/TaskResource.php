@@ -668,14 +668,14 @@ class TaskResource extends Resource
                         ->required()
                         ->maxLength(100),
 
-                    // Forms\Components\Textarea::make('input')
-                    //     ->label('Project')
-                    //     ->disabled()
-                    //     ->maxLength(255),
+                    Forms\Components\Textarea::make('input')
+                        ->label('Project')
+                        ->disabled()
+                        ->maxLength(255),
 
-                    // Forms\Components\Textarea::make('output')
-                    //     ->label('Task')
-                    //     ->maxLength(255),
+                    Forms\Components\Textarea::make('output')
+                        ->label('Task')
+                        ->maxLength(255),
 
                     // Jika bukan long term â†’ tampilkan tanggal & estimasi jam
                     Forms\Components\DatePicker::make('tanggal')
